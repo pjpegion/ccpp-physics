@@ -2,6 +2,7 @@ module scm_stochastic_physics
 
       use machine
       use mersenne_twister, only: random_setseed,random_gauss,random_stat
+      use GFS_typedefs,       only: GFS_control_type, GFS_init_type,GFS_coupling_type
       implicit none
       logical sppt_sfclimit
       real :: sppt_sigtop1,sppt_sigtop2,shum_sigefold
@@ -18,7 +19,6 @@ module scm_stochastic_physics
       logical sppt_logit
       logical do_shum,do_sppt,use_zmtnblck
 
- implicit none 
  private
  public :: init_stochastic_physics,stochastic_physics_run
 
@@ -41,16 +41,12 @@ module scm_stochastic_physics
  real*8,allocatable :: sl(:)
 
  real, allocatable :: vfact_sppt(:),vfact_shum(:)
- logical,:: first_call=.true.
+ logical :: first_call=.true.
  type(random_pattern),     save :: rpattern_sppt(1),rpattern_shum(1)
 
 contains
 
 subroutine init_stochastic_physics(Model,errmsg,errflg)
-use stochy_patterngenerator
-use stochy_namelist_def
-use GFS_typedefs,       only: GFS_control_type, GFS_init_type
-use mersenne_twister, only: random_gauss
 
 implicit none
 type(GFS_control_type),   intent(inout) :: Model
@@ -117,10 +113,6 @@ endif
 end subroutine init_stochastic_physics
 
 subroutine stochastic_physics_run(Model, Coupling, errmsg, errflg)
-use stochy_namelist_def
-use stochy_patterngenerator
-use mersenne_twister, only: random_gauss
-use GFS_typedefs,       only: GFS_control_type, GFS_coupling_type
 implicit none
 type(GFS_control_type),   intent(in) :: Model
 type(GFS_coupling_type),  intent(inout) :: Coupling
@@ -187,7 +179,7 @@ implicit none
       integer,              intent(out)   :: iret
       integer,              intent(in)    :: nlunit,sz_nml
       character(len=*),     intent(in)    :: input_nml_file(sz_nml)
-      character(len=256),    intent(in)    :: fn_nml
+      character(len=64),    intent(in)    :: fn_nml
       real,                 intent(in)    :: deltim
       real tol
       integer k,ios
@@ -277,14 +269,13 @@ implicit none
 ! set up and initialize stochastic random patterns.
 
 
- contains
  subroutine init_stochdata(delt,input_nml_file,fn_nml,nlunit)
 
 ! initialize random patterns.  A spinup period of spinup_efolds times the
 ! temporal time scale is run for each pattern.  
    integer, intent(in) :: nlunit
    character(len=*),  intent(in) :: input_nml_file(:)
-   character(len=256), intent(in) :: fn_nml
+   character(len=64), intent(in) :: fn_nml
    real, intent(in) :: delt
 
    integer :: stochlun,iret,n

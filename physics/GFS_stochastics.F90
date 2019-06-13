@@ -5,7 +5,7 @@
 !! This module
 !! @ {
     module GFS_stochastics
-
+    use scm_stochastic_physics
       contains
 
 #ifndef __PGI
