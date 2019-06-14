@@ -5,7 +5,9 @@
 !! This module
 !! @ {
     module GFS_stochastics
+#ifdef SCM   
     use scm_stochastic_physics
+#endif
       contains
 
 #ifndef __PGI
@@ -83,8 +85,6 @@ integer,                  intent(out)   :: errflg
 !      6) performs surface data cycling via the GFS gcycle routine
 !-------------------------------------------------------------------------
       subroutine GFS_stochastics_run (im, km, do_sppt, use_zmtnblck, do_shum,            &
-!                                     zmtnblck, sppt_wts, sppt_wts_out, shum_wts,        &
-!                                     shum_wts_out,diss_est,                             &
                                       zmtnblck, sppt_wts, shum_wts,diss_est,   &
                                       ugrs, vgrs, tgrs, qgrs, gu0, gv0, gt0, gq0, dtdtr, &
                                       rain, rainc, tprcp, totprcp, cnvprcp,              &
@@ -107,8 +107,6 @@ integer,                  intent(out)   :: errflg
          real(kind_phys), dimension(:,:),       intent(inout) :: sppt_wts
          ! shum_wts only allocated if do_shum == .true.
          real(kind_phys), dimension(:,:),       intent(in)    :: shum_wts
-!         real(kind_phys), dimension(:,:),       intent(inout) :: sppt_wts_out
-!         real(kind_phys), dimension(:,:),       intent(in)    :: shum_wts_out
          real(kind_phys), dimension(1:im,1:km), intent(in)    :: diss_est
          real(kind_phys), dimension(1:im,1:km), intent(in)    :: ugrs
          real(kind_phys), dimension(1:im,1:km), intent(in)    :: vgrs
