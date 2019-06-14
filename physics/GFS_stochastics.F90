@@ -83,7 +83,9 @@ integer,                  intent(out)   :: errflg
 !      6) performs surface data cycling via the GFS gcycle routine
 !-------------------------------------------------------------------------
       subroutine GFS_stochastics_run (im, km, do_sppt, use_zmtnblck, do_shum,            &
-                                      zmtnblck, sppt_wts, shum_wts, diss_est,            &
+!                                     zmtnblck, sppt_wts, sppt_wts_out, shum_wts,        &
+!                                     shum_wts_out,diss_est,                             &
+                                      zmtnblck, sppt_wts, shum_wts,diss_est,   &
                                       ugrs, vgrs, tgrs, qgrs, gu0, gv0, gt0, gq0, dtdtr, &
                                       rain, rainc, tprcp, totprcp, cnvprcp,              &
                                       totprcpb, cnvprcpb, cplflx,                        &
@@ -105,6 +107,8 @@ integer,                  intent(out)   :: errflg
          real(kind_phys), dimension(:,:),       intent(inout) :: sppt_wts
          ! shum_wts only allocated if do_shum == .true.
          real(kind_phys), dimension(:,:),       intent(in)    :: shum_wts
+!         real(kind_phys), dimension(:,:),       intent(inout) :: sppt_wts_out
+!         real(kind_phys), dimension(:,:),       intent(in)    :: shum_wts_out
          real(kind_phys), dimension(1:im,1:km), intent(in)    :: diss_est
          real(kind_phys), dimension(1:im,1:km), intent(in)    :: ugrs
          real(kind_phys), dimension(1:im,1:km), intent(in)    :: vgrs
@@ -174,6 +178,7 @@ integer,                  intent(out)   :: errflg
                vpert = (gv0(i,k) - vgrs(i,k))   * sppt_wts(i,k)
                tpert = (gt0(i,k) - tgrs(i,k) - dtdtr(i,k)) * sppt_wts(i,k)
                qpert = (gq0(i,k) - qgrs(i,k)) * sppt_wts(i,k)
+               if (k.EQ.10) print*,'sppt in stoch physics',sppt_wts(1,10),tpert
                gu0(i,k)  = ugrs(i,k)+upert
                gv0(i,k)  = vgrs(i,k)+vpert
    
@@ -198,10 +203,6 @@ integer,                  intent(out)   :: errflg
                rain_cpl(:) = rain_cpl(:) + (sppt_wts(:,30) - 1.0)*drain_cpl(:)
                snow_cpl(:) = snow_cpl(:) + (sppt_wts(:,30) - 1.0)*dsnow_cpl(:)
             endif
-            print*,' in stoch physics'
-           do k=1,km
-              print*,k,sppt_wts(1,k),gt0(1,k)
-           enddo
          
          endif
 
@@ -209,6 +210,7 @@ integer,                  intent(out)   :: errflg
            do k=1,km
              gq0(:,k) = gq0(:,k)*(1.0 + shum_wts(:,k))
            end do
+           print*,'shum in stoch physics',shum_wts(1,1)
          endif
          
 

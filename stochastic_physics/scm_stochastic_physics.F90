@@ -130,10 +130,7 @@ if ( (.NOT. do_sppt) .AND. (.NOT. do_shum) ) return
 allocate(wnoise(1))
 if (do_sppt) then
    call random_gauss(wnoise,rpattern_sppt(1)%rstate)
-   
    if (first_call) then
-      print*,'in first call',wnoise,rpattern_sppt(1)%stdev(1)
-      print*,'in first call 2',rpattern_sppt(1)%rnoise(1,1)
       rpattern_sppt(1)%rnoise(1,1)= wnoise(1)*rpattern_sppt(1)%stdev(1)
       do k=1,Model%levs
          Coupling%sppt_wts(1,k)= rpattern_sppt(1)%rnoise(1,1)*vfact_sppt(k)
@@ -156,13 +153,15 @@ endif
 if (do_shum) then
    call random_gauss(wnoise,rpattern_shum(1)%rstate)
    if (first_call) then
+      rpattern_shum(1)%rnoise(1,1)= wnoise(1)*rpattern_shum(1)%stdev(1)
       do k=1,Model%levs
-         Coupling%shum_wts(1,k)=rpattern_shum(1)%stdev(1)*wnoise(1)*vfact_shum(k)
+         Coupling%shum_wts(1,k)= rpattern_shum(1)%rnoise(1,1)*vfact_shum(k)
       enddo
    else
+      rpattern_shum(1)%rnoise(1,1)=rpattern_shum(1)%phi(1)*rpattern_shum(1)%rnoise(1,1)+  & ! AR(1)
+            sqrt(1-rpattern_shum(1)%phi(1)**2)*rpattern_shum(1)%stdev(1)*wnoise(1)
       do k=1,Model%levs
-         Coupling%shum_wts(1,k)=rpattern_shum(1)%phi(1)*Coupling%shum_wts(1,k)+  &
-         sqrt(1-rpattern_shum(1)%phi(1)**2)*rpattern_shum(1)%stdev(1)*wnoise(1)*vfact_shum(k)
+         Coupling%shum_wts(1,k)= rpattern_shum(1)%rnoise(1,1)*vfact_shum(k)
       enddo
    endif
 endif
@@ -303,11 +302,11 @@ implicit none
    print *,'nshum = ',nshum
 
    if (nsppt > 0) then
-      print *, 'Initialize random pattern for SPPT',nsppt
+      print *, 'Initialize random pattern for SPPT',nsppt,sppt_tau(1:nsppt)
       call stochy_patterngenerator_init(delt,sppt_tau(1:nsppt),sppt(1:nsppt),iseed_sppt,rpattern_sppt(1),nsppt)
    endif
    if (nshum > 0) then
-      print *, 'Initialize random pattern for SHUM',nshum
+      print *, 'Initialize random pattern for SHUM',nshum,shum_tau(1:nshum)
       call stochy_patterngenerator_init(delt,shum_tau(1:nshum),shum(1:nshum),iseed_shum,rpattern_shum(1),nshum)
    endif
 end subroutine init_stochdata
