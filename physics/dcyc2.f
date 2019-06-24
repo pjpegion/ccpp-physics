@@ -53,7 +53,7 @@
 !            sfcnirbmd,sfcnirdfd,sfcvisbmd,sfcvisdfd,                   !
 !            ix, im, levs,                                              !
 !      input/output:                                                    !
-!            dtdt,dtdtc,                                                !
+!            dtdt,dtdtnp,                                               !
 !      outputs:                                                         !
 !            adjsfcdsw,adjsfcnsw,adjsfcdlw,adjsfculw,xmu,xcosz,         !
 !            adjnirbmu,adjnirdfu,adjvisbmu,adjvisdfu,                   !
@@ -94,7 +94,7 @@
 !  input/output:                                                        !
 !     dtdt(im,levs)- real, model time step adjusted total radiation     !
 !                          heating rates ( k/s )                        !
-!     dtdtc(im,levs)- real, model time step adjusted clear sky radiation!
+!     dtdtnp(im,levs)- real, model time step adjusted clear sky radiation!
 !                          heating rates ( k/s )                        !
 !                                                                       !
 !  outputs:                                                             !
@@ -189,7 +189,7 @@
 !! | levs           | vertical_dimension                                                                             | number of vertical layers                                                                            | count   |    0 | integer   |           | in     | F        |
 !! | deltim         | time_step_for_dynamics                                                                         | dynamics timestep                                                                                    | s       |    0 | real      | kind_phys | in     | F        |
 !! | dtdt           | tendency_of_air_temperature_due_to_model_physics                                               | total radiative heating rate at current time                                                         | K s-1   |    2 | real      | kind_phys | inout  | F        |
-!! | dtdtc          | tendency_of_air_temperature_due_to_radiative_heating_assuming_clear_sky                        | clear sky radiative (shortwave + longwave) heating rate at current time                              | K s-1   |    2 | real      | kind_phys | inout  | F        |
+!! | dtdtnp         | tendency_of_air_temperature_due_to_radiative_heating_not_to_perturb                            | radiative (shortwave + longwave) heating rate at current time                                        | K s-1   |    2 | real      | kind_phys | inout  | F        |
 !! | adjsfcdsw      | surface_downwelling_shortwave_flux                                                             | surface downwelling shortwave flux at current time                                                   | W m-2   |    1 | real      | kind_phys | out    | F        |
 !! | adjsfcnsw      | surface_net_downwelling_shortwave_flux                                                         | surface net downwelling shortwave flux at current time                                               | W m-2   |    1 | real      | kind_phys | out    | F        |
 !! | adjsfcdlw      | surface_downwelling_longwave_flux                                                              | surface downwelling longwave flux at current time                                                    | W m-2   |    1 | real      | kind_phys | out    | F        |
@@ -204,6 +204,7 @@
 !! | adjnirdfd      | surface_downwelling_diffuse_near_infrared_shortwave_flux                                       | surface downwelling diffuse near-infrared shortwave flux at current time                             | W m-2   |    1 | real      | kind_phys | out    | F        |
 !! | adjvisbmd      | surface_downwelling_direct_ultraviolet_and_visible_shortwave_flux                              | surface downwelling beam ultraviolet plus visible shortwave flux at current time                     | W m-2   |    1 | real      | kind_phys | out    | F        |
 !! | adjvisdfd      | surface_downwelling_diffuse_ultraviolet_and_visible_shortwave_flux                             | surface downwelling diffuse ultraviolet plus visible shortwave flux at current time                  | W m-2   |    1 | real      | kind_phys | out    | F        |
+!! | pert_clds      | flag_for_stochastic_cloud_perturbations | flag for stochastic cloudc perturbations | flag | 0 | logical    |           | in     | F        |
 !! | errmsg         | ccpp_error_message                                                                             | error message for error handling in CCPP                                                             | none    |    0 | character | len=*     | out    | F        |
 !! | errflg         | ccpp_error_flag                                                                                | error flag for error handling in CCPP                                                                | flag    |    0 | integer   |           | out    | F        |
 !!
@@ -215,8 +216,8 @@
      &       sfcdsw,sfcnsw,sfcdlw,swh,swhc,hlw,hlwc,                    &
      &       sfcnirbmu,sfcnirdfu,sfcvisbmu,sfcvisdfu,                   &
      &       sfcnirbmd,sfcnirdfd,sfcvisbmd,sfcvisdfd,                   &
-     &       ix, im, levs, deltim,                                      &
-     &       dtdt,dtdtc,                                                & !  ---  input/output:
+     &       ix, im, levs, deltim, pert_clds,                           &
+     &       dtdt,dtdtnp,                                               & !  ---  input/output:
      &       adjsfcdsw,adjsfcnsw,adjsfcdlw,adjsfculw,xmu,xcosz,         & !  ---  outputs:
      &       adjnirbmu,adjnirdfu,adjvisbmu,adjvisdfu,                   &
      &       adjnirbmd,adjnirdfd,adjvisbmd,adjvisdfd,                   &
@@ -248,10 +249,11 @@
 
       real(kind=kind_phys), dimension(ix,levs), intent(in) :: swh,  hlw &
      &,                                                       swhc, hlwc
+      logical, intent(in) :: pert_clds
 
 !  ---  input/output:
       real(kind=kind_phys), dimension(im,levs), intent(inout) :: dtdt   &
-     &,                                                          dtdtc
+     &,                                                          dtdtnp
 
 !  ---  outputs:
       real(kind=kind_phys), dimension(im), intent(out) ::               &
@@ -327,7 +329,11 @@
       do k = 1, levs
         do i = 1, im
           dtdt(i,k)  = dtdt(i,k)  + swh(i,k)*xmu(i)  + hlw(i,k)
-          dtdtc(i,k) = dtdtc(i,k) + swhc(i,k)*xmu(i) + hlwc(i,k)
+          if (pert_clds) then! save full radiation tendency
+             dtdtnp(i,k) = dtdtnp(i,k) + swhh(i,k)*xmu(i) + hlw(i,k)
+          endif ! only save CS radiation
+             dtdtnp(i,k) = dtdtnp(i,k) + swhc(i,k)*xmu(i) + hlwc(i,k)
+          else
         enddo
       enddo
 !
@@ -368,6 +374,9 @@
 !! | local_name     | standard_name                          | long_name                                              | units   | rank | type                  | kind      | intent | optional |
 !! |----------------|----------------------------------------|--------------------------------------------------------|---------|------|-----------------------|-----------|--------|----------|
 !! | im             | horizontal_loop_extent                 | horizontal loop extent                                 | count   |    0 | integer               |           | in     | F        |
+!! | do_sppt        | flag_for_stochastic_surface_physics_perturbations | flag for stochastic surface physics perturbations | flag | 0 | logical    |           | in     | F        |
+!! | dtdtr  | tendency_of_air_temperature_due_to_radiative_heating_on_physics_time_step| temp. change due to radiative heating per time step | K | 2 | real | kind_phys | inout  | F |
+!! | dtdtnp | tendency_of_air_temperature_due_to_radiative_heating_not_to_perturb | radiative (shortwave + longwave) heating rate at current time | K s-1 | 2 | real | kind_phys | in | F |
 !! | adjsfcdsw      | surface_downwelling_shortwave_flux     | surface downwelling shortwave flux at current time     | W m-2   |    1 | real                  | kind_phys | in     | F        |
 !! | adjsfcnsw      | surface_net_downwelling_shortwave_flux | surface net downwelling shortwave flux at current time | W m-2   |    1 | real                  | kind_phys | in     | F        |
 !! | adjsfcusw      | surface_upwelling_shortwave_flux       | surface upwelling shortwave flux at current time       | W m-2   |    1 | real                  | kind_phys | out    | F        |
@@ -386,7 +395,10 @@
       integer, intent(in) :: im
       real(kind=kind_phys), dimension(im), intent(in)  :: adjsfcdsw
       real(kind=kind_phys), dimension(im), intent(in)  :: adjsfcnsw
+      real(kind=kind_phys), dimension(im,levs), intent(inout) :: dtdtr
       real(kind=kind_phys), dimension(im), intent(out) :: adjsfcusw
+      real(kind=kind_phys), dimension(im,levs), intent(in)    :: dtdtnp
+      logical, intent(in) :: do_sppt
       character(len=*), intent(out) :: errmsg
       integer,          intent(out) :: errflg
 
@@ -395,6 +407,9 @@
       errflg = 0
 
       adjsfcusw(:) = adjsfcdsw(:) - adjsfcnsw(:)
+      if (do_sppt) then
+        dtdtr(1:im,:) = dtdtr(1:im,:) + dtdtnp(1:im,:)*dtf
+      endif
 
       return
       end subroutine dcyc2t3_post_run

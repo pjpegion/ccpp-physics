@@ -155,8 +155,6 @@
 !! | snow_cpl         | lwe_thickness_of_snow_amount_for_coupling                               | total snow precipitation                                                | m           |    1 | real       | kind_phys | inout  | F        |
 !! | pwat             | column_precipitable_water                                               | precipitable water                                                      | kg m-2      |    1 | real       | kind_phys | inout  | F        |
 !! | do_sppt          | flag_for_stochastic_surface_physics_perturbations                       | flag for stochastic surface physics perturbations                       | flag        |    0 | logical    |           | in     | F        |
-!! | dtdtr            | tendency_of_air_temperature_due_to_radiative_heating_on_physics_time_step| temp. change due to radiative heating per time step                    | K           |    2 | real       | kind_phys | inout  | F        |
-!! | dtdtc            | tendency_of_air_temperature_due_to_radiative_heating_assuming_clear_sky | clear sky radiative (shortwave + longwave) heating rate at current time | K s-1       |    2 | real       | kind_phys | in     | F        |
 !! | drain_cpl        | tendency_of_lwe_thickness_of_precipitation_amount_for_coupling          | change in rain_cpl (coupling_type)                                      | m           |    1 | real       | kind_phys | inout  | F        |
 !! | dsnow_cpl        | tendency_of_lwe_thickness_of_snow_amount_for_coupling                   | change in show_cpl (coupling_type)                                      | m           |    1 | real       | kind_phys | inout  | F        |
 !! | lsm              | flag_for_land_surface_scheme                                            | flag for land surface model                                             | flag        |    0 | integer    |           | in     | F        |
@@ -177,7 +175,7 @@
         gt0, gq0, prsl, prsi, phii, tsfc, ice, snow, graupel, save_t, save_qv, rain0, ice0, snow0, graupel0, del,         &
         rain, domr_diag, domzr_diag, domip_diag, doms_diag, tprcp, srflag, totprcp, totice, totsnw,                       &
         totgrp, totprcpb, toticeb, totsnwb, totgrpb, dt3dt, dq3dt, rain_cpl, rainc_cpl, snow_cpl, pwat,                   &
-        do_sppt, dtdtr, dtdtc, drain_cpl, dsnow_cpl, lsm, lsm_ruc, raincprv, rainncprv, iceprv, snowprv, graupelprv,      &
+        do_sppt, drain_cpl, dsnow_cpl, lsm, lsm_ruc, raincprv, rainncprv, iceprv, snowprv, graupelprv,      &
         dtp, errmsg, errflg)
 !
       use machine, only: kind_phys
@@ -201,9 +199,6 @@
       real(kind=kind_phys), dimension(im,levs), intent(inout) :: dt3dt, dq3dt
 
       ! Stochastic physics / surface perturbations
-      logical, intent(in) :: do_sppt
-      real(kind=kind_phys), dimension(im,levs), intent(inout) :: dtdtr
-      real(kind=kind_phys), dimension(im,levs), intent(in)    :: dtdtc
       real(kind=kind_phys), dimension(im),      intent(inout) :: drain_cpl
       real(kind=kind_phys), dimension(im),      intent(inout) :: dsnow_cpl
 
@@ -434,7 +429,6 @@
       ! Stochastic physics / surface perturbations
       if (do_sppt) then
 !--- radiation heating rate
-        dtdtr(1:im,:) = dtdtr(1:im,:) + dtdtc(1:im,:)*dtf
         do i = 1, im
           if (t850(i) > 273.16) then
 !--- change in change in rain precip
