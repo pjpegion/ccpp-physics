@@ -71,7 +71,6 @@ integer,                  intent(out)   :: errflg
 !! | errmsg         | ccpp_error_message                                                        | error message for error handling in CCPP                     | none    |    0 | character | len=*     | out    | F        |
 !! | errflg         | ccpp_error_flag                                                           | error flag for error handling in CCPP                        | flag    |    0 | integer   |           | out    | F        |
 !! | Model          | GFS_control_type_instance                                                 | Fortran DDT containing FV3-GFS model control parameters     | DDT      |    0 | GFS_control_type      |        | inout  | F        |
-!! | Coupling       | GFS_coupling_type_instance                                                | Fortran DDT containing FV3-GFS fields to/from coupling with other components | DDT      |    0 | GFS_coupling_type     |           | inout  | F        |
 !!
 #endif
 !-------------------------------------------------------------------------
@@ -90,7 +89,7 @@ integer,                  intent(out)   :: errflg
                                       rain, rainc, tprcp, totprcp, cnvprcp,              &
                                       totprcpb, cnvprcpb, cplflx,                        &
                                       rain_cpl, snow_cpl, drain_cpl, dsnow_cpl,          &
-                                      errmsg, errflg,Model,Coupling)
+                                      errmsg, errflg,Model)
 
          use GFS_typedefs,       only: GFS_control_type, GFS_coupling_type
          use machine,               only: kind_phys
@@ -135,7 +134,6 @@ integer,                  intent(out)   :: errflg
          character(len=*),                      intent(out)   :: errmsg
          integer,                               intent(out)   :: errflg
          type(GFS_control_type),   intent(inout) :: Model
-         type(GFS_coupling_type),   intent(inout) :: Coupling
 
          !--- local variables
          integer :: k, i
@@ -144,9 +142,6 @@ integer,                  intent(out)   :: errflg
          ! Initialize CCPP error handling variables
          errmsg = ''
          errflg = 0
-      print*,'call stochastic_physics_run'
-
-         call stochastic_physics_run(Model, Coupling, errmsg, errflg)
 
          if (do_sppt) then
            do k=1,km
@@ -172,35 +167,35 @@ integer,                  intent(out)   :: errflg
                   sppt_wts(i,k)=(sppt_wts(i,k)-1)*sppt_vwt+1.0
                endif
 
-               upert = (gu0(i,k) - ugrs(i,k))   * sppt_wts(i,k)
-               vpert = (gv0(i,k) - vgrs(i,k))   * sppt_wts(i,k)
-               tpert = (gt0(i,k) - tgrs(i,k) - dtdtr(i,k)) * sppt_wts(i,k)
-               qpert = (gq0(i,k) - qgrs(i,k)) * sppt_wts(i,k)
-               if (k.EQ.10) print*,'sppt in stoch physics',sppt_wts(1,10),tpert
-               gu0(i,k)  = ugrs(i,k)+upert
-               gv0(i,k)  = vgrs(i,k)+vpert
+               !upert = (gu0(i,k) - ugrs(i,k))   * sppt_wts(i,k)
+               !vpert = (gv0(i,k) - vgrs(i,k))   * sppt_wts(i,k)
+               !tpert = (gt0(i,k) - tgrs(i,k) - dtdtr(i,k)) * sppt_wts(i,k)
+               !qpert = (gq0(i,k) - qgrs(i,k)) * sppt_wts(i,k)
+               !gu0(i,k)  = ugrs(i,k)+upert
+               !gv0(i,k)  = vgrs(i,k)+vpert
    
                !negative humidity check
-               qnew = qgrs(i,k)+qpert
-               if (qnew >= 1.0e-10) then
-                  gq0(i,k) = qnew
-                  gt0(i,k) = tgrs(i,k) + tpert + dtdtr(i,k)
-               endif
+               !qnew = qgrs(i,k)+qpert
+               !if (qnew >= 1.0e-10) then
+               !   gq0(i,k) = qnew
+                  !gt0(i,k) = tgrs(i,k) + tpert + dtdtr(i,k)
+               !   gt0(i,k) = gt0(i,k) + dtdtr(i,k) * (1.0-sppt_wts(i,k))
+               !endif
              enddo
            enddo
            ! instantaneous precip rate going into land model at the next time step
-           tprcp(:) = sppt_wts(:,30)*tprcp(:)
-           totprcp(:) = totprcp(:) + (sppt_wts(:,30) - 1 )*rain(:)
+           !tprcp(:) = sppt_wts(:,30)*tprcp(:)
+           !totprcp(:) = totprcp(:) + (sppt_wts(:,30) - 1 )*rain(:)
            ! acccumulated total and convective preciptiation
-           cnvprcp(:) = cnvprcp(:) + (sppt_wts(:,30) - 1 )*rainc(:)
+           !cnvprcp(:) = cnvprcp(:) + (sppt_wts(:,30) - 1 )*rainc(:)
            ! bucket precipitation adjustment due to sppt
-           totprcpb(:) = totprcpb(:) + (sppt_wts(:,30) - 1 )*rain(:)
-           cnvprcpb(:) = cnvprcpb(:) + (sppt_wts(:,30) - 1 )*rainc(:)
+           !totprcpb(:) = totprcpb(:) + (sppt_wts(:,30) - 1 )*rain(:)
+           !cnvprcpb(:) = cnvprcpb(:) + (sppt_wts(:,30) - 1 )*rainc(:)
 
-            if (cplflx) then
-               rain_cpl(:) = rain_cpl(:) + (sppt_wts(:,30) - 1.0)*drain_cpl(:)
-               snow_cpl(:) = snow_cpl(:) + (sppt_wts(:,30) - 1.0)*dsnow_cpl(:)
-            endif
+           ! if (cplflx) then
+           !    rain_cpl(:) = rain_cpl(:) + (sppt_wts(:,30) - 1.0)*drain_cpl(:)
+           !    snow_cpl(:) = snow_cpl(:) + (sppt_wts(:,30) - 1.0)*dsnow_cpl(:)
+           ! endif
          
          endif
 

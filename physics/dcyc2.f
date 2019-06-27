@@ -326,16 +326,24 @@
 !>  - adjust SW heating rates with zenith angle change and
 !! add with LW heating to temperature tendency.
 
+      !do k = 1, levs
+      !  do i = 1, im
+      !    dtdt(i,k)  = dtdt(i,k)  + swh(i,k)*xmu(i)  + hlw(i,k)
+      !    if (pert_clds) then! save full radiation tendency
+      !       dtdtnp(i,k) = dtdtnp(i,k) + swh(i,k)*xmu(i) + hlw(i,k)
+      !    else  ! only save CS radiation
+      !       dtdtnp(i,k) = dtdtnp(i,k) + swhc(i,k)*xmu(i) + hlwc(i,k)
+      !    endif 
+      !  enddo
+      !enddo
       do k = 1, levs
         do i = 1, im
           dtdt(i,k)  = dtdt(i,k)  + swh(i,k)*xmu(i)  + hlw(i,k)
-          if (pert_clds) then! save full radiation tendency
-             dtdtnp(i,k) = dtdtnp(i,k) + swhh(i,k)*xmu(i) + hlw(i,k)
-          endif ! only save CS radiation
-             dtdtnp(i,k) = dtdtnp(i,k) + swhc(i,k)*xmu(i) + hlwc(i,k)
-          else
+          dtdtnp(i,k) = dtdtnp(i,k) + swh(i,k)*xmu(i) + hlw(i,k)
+     &                             - swhc(i,k)*xmu(i) - hlwc(i,k)
         enddo
       enddo
+      print*,'in dcyc',pert_clds,dtdtnp(1,20)
 !
       return
 !...................................
@@ -374,17 +382,20 @@
 !! | local_name     | standard_name                          | long_name                                              | units   | rank | type                  | kind      | intent | optional |
 !! |----------------|----------------------------------------|--------------------------------------------------------|---------|------|-----------------------|-----------|--------|----------|
 !! | im             | horizontal_loop_extent                 | horizontal loop extent                                 | count   |    0 | integer               |           | in     | F        |
-!! | do_sppt        | flag_for_stochastic_surface_physics_perturbations | flag for stochastic surface physics perturbations | flag | 0 | logical    |           | in     | F        |
-!! | dtdtr  | tendency_of_air_temperature_due_to_radiative_heating_on_physics_time_step| temp. change due to radiative heating per time step | K | 2 | real | kind_phys | inout  | F |
+!! | levs           | vertical_dimension                     | number of vertical layers                              | count   |    0 | integer               |           | in     | F        |
+!! | do_sppt        | flag_for_stochastic_surface_physics_perturbations | flag for stochastic surface physics perturbations | flag | 0 | logical               |           | in     | F        |
+!! | dtdtr  | tendency_of_air_temperature_due_to_radiative_heating_on_physics_time_step| temp. change due to radiative heating per time step | K | 2 | real    | kind_phys | inout  | F        |
 !! | dtdtnp | tendency_of_air_temperature_due_to_radiative_heating_not_to_perturb | radiative (shortwave + longwave) heating rate at current time | K s-1 | 2 | real | kind_phys | in | F |
 !! | adjsfcdsw      | surface_downwelling_shortwave_flux     | surface downwelling shortwave flux at current time     | W m-2   |    1 | real                  | kind_phys | in     | F        |
 !! | adjsfcnsw      | surface_net_downwelling_shortwave_flux | surface net downwelling shortwave flux at current time | W m-2   |    1 | real                  | kind_phys | in     | F        |
 !! | adjsfcusw      | surface_upwelling_shortwave_flux       | surface upwelling shortwave flux at current time       | W m-2   |    1 | real                  | kind_phys | out    | F        |
+!! | dtf            | time_step_for_dynamics                 | dynamics timestep                                      | s           |    0 | real       | kind_phys | in     | F        |
 !! | errmsg         | ccpp_error_message                     | error message for error handling in CCPP               | none    |    0 | character             | len=*     | out    | F        |
 !! | errflg         | ccpp_error_flag                        | error flag for error handling in CCPP                  | flag    |    0 | integer               |           | out    | F        |
 !!
       subroutine dcyc2t3_post_run(                                      &
-     &           im, adjsfcdsw, adjsfcnsw, adjsfcusw,                   &
+     &           im, levs, adjsfcdsw, adjsfcnsw, adjsfcusw,             &
+     &           do_sppt,dtdtr,dtdtnp,dtf,                              &
      &           errmsg, errflg)
 
       use GFS_typedefs, only: GFS_diag_type
@@ -392,12 +403,13 @@
 
       implicit none
 
-      integer, intent(in) :: im
+      integer, intent(in) :: im,levs
       real(kind=kind_phys), dimension(im), intent(in)  :: adjsfcdsw
       real(kind=kind_phys), dimension(im), intent(in)  :: adjsfcnsw
       real(kind=kind_phys), dimension(im,levs), intent(inout) :: dtdtr
       real(kind=kind_phys), dimension(im), intent(out) :: adjsfcusw
       real(kind=kind_phys), dimension(im,levs), intent(in)    :: dtdtnp
+      real(kind=kind_phys)               , intent(in)  :: dtf
       logical, intent(in) :: do_sppt
       character(len=*), intent(out) :: errmsg
       integer,          intent(out) :: errflg

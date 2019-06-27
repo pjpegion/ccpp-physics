@@ -4,6 +4,9 @@
    module GFS_time_vary_pre
 
       use funcphys, only: gfuncphys
+#ifdef SCM   
+    use scm_stochastic_physics
+#endif
 
       implicit none
 
@@ -72,17 +75,19 @@
 !! | local_name     | standard_name                                          | long_name                                                             | units         | rank | type                  |    kind   | intent | optional |
 !! |----------------|--------------------------------------------------------|-----------------------------------------------------------------------|---------------|------|-----------------------|-----------|--------|----------|
 !! | Model          | GFS_control_type_instance                              | Fortran DDT containing FV3-GFS model control parameters               | DDT           |    0 | GFS_control_type      |           | inout  | F        |
+!! | Coupling       | GFS_coupling_type_instance                             | Fortran DDT containing FV3-GFS fields to/from coupling with other components | DDT      |    0 | GFS_coupling_type     |           | inout  | F        |
 !! | errmsg         | ccpp_error_message                                     | error message for error handling in CCPP                              | none          |    0 | character             | len=*     | out    | F        |
 !! | errflg         | ccpp_error_flag                                        | error flag for error handling in CCPP                                 | flag          |    0 | integer               |           | out    | F        |
 !!
-      subroutine GFS_time_vary_pre_run (Model, errmsg, errflg)
+      subroutine GFS_time_vary_pre_run (Model, Coupling, errmsg, errflg)
 
         use machine,               only: kind_phys
-        use GFS_typedefs,          only: GFS_control_type
+        use GFS_typedefs,          only: GFS_control_type,GFS_coupling_type
 
         implicit none
 
         type(GFS_control_type),           intent(inout) :: Model
+        type(GFS_coupling_type),          intent(inout) :: Coupling
         character(len=*),                 intent(out)   :: errmsg
         integer,                          intent(out)   :: errflg
 
@@ -135,6 +140,7 @@
           print *,' phour ', Model%phour
           print *,' solhr ', Model%solhr
         endif
+        call stochastic_physics_run(Model, Coupling, errmsg, errflg)
 
       end subroutine GFS_time_vary_pre_run
 

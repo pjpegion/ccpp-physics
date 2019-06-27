@@ -199,6 +199,7 @@
       real(kind=kind_phys), dimension(im,levs), intent(inout) :: dt3dt, dq3dt
 
       ! Stochastic physics / surface perturbations
+      logical, intent(in) :: do_sppt
       real(kind=kind_phys), dimension(im),      intent(inout) :: drain_cpl
       real(kind=kind_phys), dimension(im),      intent(inout) :: dsnow_cpl
 

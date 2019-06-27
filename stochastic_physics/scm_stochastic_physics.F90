@@ -17,7 +17,7 @@ module scm_stochastic_physics
       logical do_sfcperts
       integer(8) ::iseed_sppt,iseed_shum
       logical sppt_logit
-      logical do_shum,do_sppt,use_zmtnblck
+      logical do_shum,do_sppt,use_zmtnblck,pert_clds
 
  private
  public :: init_stochastic_physics,stochastic_physics_run
@@ -62,6 +62,7 @@ errflg = 0
 dtp=Model%dtp
 call init_stochdata(dtp,Model%input_nml_file,Model%fn_nml,Model%nlunit)
 ! check to see decomposition
+Model%pert_clds=pert_clds
 Model%do_sppt=do_sppt
 Model%use_zmtnblck=use_zmtnblck
 Model%do_shum=do_shum
@@ -73,6 +74,8 @@ Model%pertshc=pertshc         ! mg, sfc-perts
 Model%pertlai=pertlai         ! mg, sfc-perts
 Model%pertalb=pertalb         ! mg, sfc-perts
 Model%pertvegf=pertvegf         ! mg, sfc-perts
+Model%sppt_amp=sqrt(SUM(sppt(1:nsppt)**2))
+print*,'sppt_amp=',Model%sppt_amp
 if ( (.NOT. do_sppt) .AND. (.NOT. do_shum) .AND. (.NOT. do_sfcperts) ) return
 allocate(sl(Model%levs))
 do k=1,Model%levs
@@ -108,7 +111,6 @@ if (do_shum) then
       print *,'shum vert profile',k,sl(k),vfact_shum(k)
    enddo
 endif
-
 
 end subroutine init_stochastic_physics
 
@@ -187,7 +189,7 @@ implicit none
 !
       namelist /nam_stochy/sppt,sppt_tau,sppt_logit, &
       iseed_shum,iseed_sppt,shum,shum_tau,& 
-      sppt_sfclimit, &
+      sppt_sfclimit,pert_clds, &
       sppt_sigtop1,sppt_sigtop2,&
       shum_sigefold,use_zmtnblck, &
       nsfcpert,pertz0,pertshc,pertzt,pertlai, & ! mg, sfcperts
@@ -200,6 +202,7 @@ implicit none
       shum             = -999.  ! stochastic boundary layer spf hum amp   
 ! logicals
       do_sppt = .false.
+      pert_clds = .false.
       use_zmtnblck = .false.
       do_shum = .false.
       ! mg, sfcperts
@@ -259,6 +262,7 @@ implicit none
 !
          print *, 'stochastic physics'
          print *, ' do_sppt : ', do_sppt
+         print *, ' pert_clds : ', pert_clds
          print *, ' do_shum : ', do_shum
       iret = 0
 !

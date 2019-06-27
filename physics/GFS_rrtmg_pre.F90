@@ -64,6 +64,7 @@
 !! | clouds3           | mean_effective_radius_for_liquid_cloud                        | mean effective radius for liquid cloud                                        | micron   |    2 | real             | kind_phys | out    | F        |
 !! | clouds4           | cloud_ice_water_path                                          | layer cloud ice water path                                                    | g m-2    |    2 | real             | kind_phys | out    | F        |
 !! | clouds5           | mean_effective_radius_for_ice_cloud                           | mean effective radius for ice cloud                                           | micron   |    2 | real             | kind_phys | out    | F        |
+!! | sppt_wts       | weights_for_stochastic_sppt_perturbation                                  | weights for stochastic sppt perturbation                     | none    |    2 | real      | kind_phys | inout  | F        |
 !! | clouds6           | cloud_rain_water_path                                         | cloud rain water path                                                         | g m-2    |    2 | real             | kind_phys | out    | F        |
 !! | clouds7           | mean_effective_radius_for_rain_drop                           | mean effective radius for rain drop                                           | micron   |    2 | real             | kind_phys | out    | F        |
 !! | clouds8           | cloud_snow_water_path                                         | cloud snow water path                                                         | g m-2    |    2 | real             | kind_phys | out    | F        |
@@ -91,7 +92,7 @@
           faerlw1, faerlw2, faerlw3, aerodp,                         &
           clouds1, clouds2, clouds3, clouds4, clouds5, clouds6,      &
           clouds7, clouds8, clouds9, cldsa,                          &
-          mtopa, mbota, de_lgth, alb1d, errmsg, errflg)
+          mtopa, mbota, de_lgth, alb1d, sppt_wts,errmsg, errflg)
 
       use machine,                   only: kind_phys
       use GFS_typedefs,              only: GFS_statein_type,   &
@@ -126,7 +127,7 @@
      &                                     profsw_type, NBDSW
       use module_radlw_parameters,   only: topflw_type, sfcflw_type,   &
      &                                     proflw_type, NBDLW
-      use surface_perturbation,      only: cdfnor
+      use surface_perturbation,      only: cdfnor, ppfbet
 
       implicit none
 
@@ -183,6 +184,7 @@
       real(kind=kind_phys), dimension(size(Grid%xlon,1),Model%levr+LTP),   intent(out) :: clouds8
       real(kind=kind_phys), dimension(size(Grid%xlon,1),Model%levr+LTP),   intent(out) :: clouds9
       real(kind=kind_phys), dimension(size(Grid%xlon,1),5),                intent(out) :: cldsa
+      real(kind=kind_phys), dimension(size(Grid%xlon,1),Model%levs),       intent(in)  :: sppt_wts
       integer,              dimension(size(Grid%xlon,1),3),                intent(out) :: mbota
       integer,              dimension(size(Grid%xlon,1),3),                intent(out) :: mtopa
       real(kind=kind_phys), dimension(size(Grid%xlon,1)),                  intent(out) :: de_lgth
@@ -192,7 +194,7 @@
       integer, intent(out) :: errflg
 
       ! Local variables
-      integer :: me, nfxr, ntrac, ntcw, ntiw, ncld, ntrw, ntsw, ntgl
+      integer :: me, nfxr, ntrac, ntcw, ntiw, ncld, ntrw, ntsw, ntgl,iflag
 
       integer :: i, j, k, k1, k2, lsk, lv, n, itop, ibtc, LP1, lla, llb, lya, lyb
 
@@ -215,6 +217,8 @@
       real(kind=kind_phys), dimension(size(Grid%xlon,1),Model%levr+LTP,NF_VGAS) :: gasvmr
       real(kind=kind_phys), dimension(size(Grid%xlon,1),Model%levr+LTP,NBDSW,NF_AESW)::faersw
       real(kind=kind_phys), dimension(size(Grid%xlon,1),Model%levr+LTP,NBDLW,NF_AELW)::faerlw
+      real(kind=kind_phys) :: alpha,beta,m,s,cldtmp,tmp_wt,cdfz
+      
 !
 !===> ...  begin here
 !
@@ -661,7 +665,31 @@
             enddo
           endif
         elseif (Model%imp_physics == Model%imp_physics_gfdl) then                          ! GFDL MP
-          cldcov(1:IM,1+kd:LM+kd) = tracer1(1:IM,1:LM,Model%ntclamt)
+          !if (Model%pert_clds) then
+          !     do i=1,im
+          !        tmp_wt= -1*log( ( 2.0 / ( Coupling%sppt_wts(i,38) ) ) - 1 )
+          !        call cdfnor(tmp_wt,cdfz)
+          !        do k = 1, LM
+          !           ! compute beta distribution parameters
+          !           m = tracer1(i,k,Model%ntclamt)
+          !           if (m<0.99) then
+          !              s = Model%sppt_amp*m*(1.-m)
+          !              alpha = m*m*(1.-m)/(s*s)-m
+          !              beta  = alpha*(1.-m)/m
+          !  ! compute beta distribution value corresponding
+          !  ! to the given percentile albPpert to use as new albedo
+          !              call ppfbet(cdfz,alpha,beta,iflag,cldtmp)
+          !              if (k.EQ.9) print*,'beta ',cdfz,s,alpha,beta
+          !              if (k.EQ.9) print*,'cldcov',tracer1(i,k,Model%ntclamt),cldtmp,tmp_wt
+          !              cldcov(i,k+kd) = cldtmp
+          !           else
+          !              cldcov(i,k+kd) = tracer1(i,k,Model%ntclamt)
+          !           endif
+          !       enddo
+          !    enddo
+          !else
+              cldcov(1:IM,1+kd:LM+kd) = tracer1(1:IM,1:LM,Model%ntclamt)
+          !endif
           if(Model%effr_in) then
             do k=1,lm
               k1 = k + kd

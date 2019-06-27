@@ -115,7 +115,7 @@
 !! | dudt           | tendency_of_x_wind_due_to_model_physics                                   | updated tendency of the x wind                                          | m s-2         |    2 | real       | kind_phys | out    | F        |
 !! | dvdt           | tendency_of_y_wind_due_to_model_physics                                   | updated tendency of the y wind                                          | m s-2         |    2 | real       | kind_phys | out    | F        |
 !! | dtdt           | tendency_of_air_temperature_due_to_model_physics                          | updated tendency of the temperature                                     | K s-1         |    2 | real       | kind_phys | out    | F        |
-!! | dtdtc          | tendency_of_air_temperature_due_to_radiative_heating_assuming_clear_sky   | clear sky radiative (shortwave + longwave) heating rate at current time | K s-1         |    2 | real       | kind_phys | out    | F        |
+!! | dtdtnp         | tendency_of_air_temperature_due_to_radiative_heating_not_to_perturb       | radiative (shortwave + longwave) heating rate at current time           | K s-1         |    2 | real       | kind_phys | out    | F        |
 !! | dqdt           | tendency_of_tracers_due_to_model_physics                                  | updated tendency of the tracers                                         | kg kg-1 s-1   |    3 | real       | kind_phys | out    | F        |
 !! | tisfc          | sea_ice_temperature                                                       | sea ice surface skin temperature                                        | K             |    1 | real       | kind_phys | in     | F        |
 !! | tice           | sea_ice_temperature_interstitial                                          | sea ice surface skin temperature use as interstitial                    | K             |    1 | real       | kind_phys | out    | F        |
@@ -123,7 +123,7 @@
 !! | errflg         | ccpp_error_flag                                                           | error flag for error handling in CCPP                                   | flag          |    0 | integer    |           | out    | F        |
 !!
     subroutine GFS_suite_interstitial_1_run (im, levs, ntrac, crtrh, dtf, dtp, slmsk, area, dxmin, dxinv, pgr, &
-      rhbbot, rhpbl, rhbtop, frain, islmsk, frland, work1, work2, psurf, dudt, dvdt, dtdt, dtdtc, dqdt, &
+      rhbbot, rhpbl, rhbtop, frain, islmsk, frland, work1, work2, psurf, dudt, dvdt, dtdt, dtdtnp, dqdt, &
       tisfc, tice, errmsg, errflg)
 
       use machine,               only: kind_phys
@@ -139,7 +139,7 @@
       real(kind=kind_phys), intent(out) :: rhbbot, rhpbl, rhbtop, frain
       integer,              intent(out), dimension(im) :: islmsk
       real(kind=kind_phys), intent(out), dimension(im) :: frland, work1, work2, psurf
-      real(kind=kind_phys), intent(out), dimension(im,levs) :: dudt, dvdt, dtdt, dtdtc
+      real(kind=kind_phys), intent(out), dimension(im,levs) :: dudt, dvdt, dtdt, dtdtnp
       real(kind=kind_phys), intent(out), dimension(im,levs,ntrac) ::  dqdt
       real(kind=kind_phys), intent(in),  dimension(im) :: tisfc
       real(kind=kind_phys), intent(out), dimension(im) :: tice
@@ -180,7 +180,7 @@
           dudt(i,k)  = 0.
           dvdt(i,k)  = 0.
           dtdt(i,k)  = 0.
-          dtdtc(i,k) = 0.
+          dtdtnp(i,k) = 0.
         enddo
       enddo
       do n=1,ntrac
