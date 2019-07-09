@@ -1941,7 +1941,6 @@
       enddo
 
 !  --- ...  set-up slope parameter
-      print*,'in sflx',slopetyp
       slope = slope_data(slopetyp)
 !
       return
