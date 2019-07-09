@@ -284,7 +284,7 @@ implicit none
    integer :: stochlun,iret,n
    print*,'in init stochdata'
    call stochy_namelist(size(input_nml_file,1),input_nml_file(:),fn_nml,nlunit,delt,iret)
-   if (do_sppt.EQ. .false. .AND. do_shum.EQ. .false.) return
+   if ( (.NOT. do_sppt) .AND. (.NOT. do_shum) ) return
    stochlun=99
    iret=0
 ! determine number of random patterns to be used for each scheme.
@@ -324,7 +324,11 @@ end subroutine init_stochdata
    type(random_pattern), intent(out) :: rpattern
 ! locals
    integer(8) count, count_rate, count_max, count_trunc
+#ifdef MACOSX
+   integer(8) :: iscale = 100000000
+#else
    integer(8) :: iscale = 10000000000
+#endif
    integer count4,seed
     
 !  propagate seed supplied from namelist to all patterns... (can remove PJP)
@@ -338,7 +342,11 @@ end subroutine init_stochdata
      count4 = count - count_trunc !+ member_id
      print *,'using seed',count4
    else
+#ifdef MACOSX
+     count4 = mod(iseed + 21474836, 42949672) - 21474836
+#else
      count4 = mod(iseed + 2147483648, 4294967296) - 2147483648
+#endif
      print *,'using seed',count4,iseed!,member_id
    endif
    seed = count4
