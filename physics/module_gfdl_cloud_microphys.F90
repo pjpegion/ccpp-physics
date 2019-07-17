@@ -327,7 +327,7 @@ subroutine gfdl_cloud_microphys_mod_driver (                                    
             qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, pt_dt, pt, w,      &
             uin, vin, udt, vdt, dz, delp, area, dt_in, land,                    &
             rain, snow, ice, graupel, hydrostatic, phys_hydrostatic,            &
-            p, lradar, refl_10cm, kdt, nsteps_per_reset,do_sppt,sppt_wts)
+            p, lradar, refl_10cm, kdt, nsteps_per_reset,pert_clds,sppt_wts)
 
    implicit none
 
@@ -351,7 +351,7 @@ subroutine gfdl_cloud_microphys_mod_driver (                                    
 
    real, intent (out), dimension (iis:iie, jjs:jje) :: rain, snow, ice, graupel
 
-   logical, intent (in) :: hydrostatic, phys_hydrostatic,do_sppt
+   logical, intent (in) :: hydrostatic, phys_hydrostatic,pert_clds
 
    !integer, intent (in) :: seconds
    real, intent (in), dimension (iis:iie, jjs:jje, kks:kke) :: p
@@ -459,7 +459,7 @@ subroutine gfdl_cloud_microphys_mod_driver (                                    
            rain (:, j), snow (:, j), graupel (:, j), ice (:, j), m2_rain,     &
            m2_sol, cond (:, j), area (:, j), land (:, j), udt, vdt, pt_dt,    &
            qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt, w_var, vt_r,      &
-           vt_s, vt_g, vt_i, qn2,do_sppt,sppt_wts=sppt_wts(:,j,:))
+           vt_s, vt_g, vt_i, qn2,pert_clds,sppt_wts=sppt_wts(:,j,:))
    enddo
 
    ! -----------------------------------------------------------------------
@@ -635,11 +635,11 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
         qg, qa, qn, dz, is, ie, js, je, ks, ke, ktop, kbot, j, dt_in, ntimes, &
         rain, snow, graupel, ice, m2_rain, m2_sol, cond, area1, land,         &
         u_dt, v_dt, pt_dt, qv_dt, ql_dt, qr_dt, qi_dt, qs_dt, qg_dt, qa_dt,   &
-        w_var, vt_r, vt_s, vt_g, vt_i, qn2,do_sppt,sppt_wts)
+        w_var, vt_r, vt_s, vt_g, vt_i, qn2,pert_clds,sppt_wts)
 
     implicit none
 
-    logical, intent (in) :: hydrostatic,do_sppt
+    logical, intent (in) :: hydrostatic,pert_clds
 
     integer, intent (in) :: j, is, ie, js, je, ks, ke
     integer, intent (in) :: ntimes, ktop, kbot
@@ -949,12 +949,12 @@ subroutine mpdrv (hydrostatic, uin, vin, w, delp, pt, qv, ql, qr, qi, qs,     &
             ! -----------------------------------------------------------------------
             !>  - Call icloud(): ice-phase microphysics
             ! -----------------------------------------------------------------------
-            if (do_sppt) then
+            if (pert_clds) then
                call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
-                 denfac, vtsz, vtgz, vtrz, qaz, rh_adj, rh_rain, dts, h_var, do_sppt,sppt_wts(i,:))
+                 denfac, vtsz, vtgz, vtrz, qaz, rh_adj, rh_rain, dts, h_var, pert_clds,sppt_wts(i,:))
             else
                call icloud (ktop, kbot, tz, p1, qvz, qlz, qrz, qiz, qsz, qgz, dp1, den, &
-                 denfac, vtsz, vtgz, vtrz, qaz, rh_adj, rh_rain, dts, h_var, do_sppt)
+                 denfac, vtsz, vtgz, vtrz, qaz, rh_adj, rh_rain, dts, h_var, pert_clds)
             endif
 
         enddo
@@ -1511,12 +1511,12 @@ end subroutine linear_prof
 !>\section det_icloud GFDL icloud Detailed Algorithm
 !> @{
 subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
-        den, denfac, vts, vtg, vtr, qak, rh_adj, rh_rain, dts, h_var,do_sppt,sppt_wts)
+        den, denfac, vts, vtg, vtr, qak, rh_adj, rh_rain, dts, h_var,pert_clds,sppt_wts)
 
     implicit none
 
     integer, intent (in) :: ktop, kbot
-    logical,intent(in) :: do_sppt
+    logical,intent(in) :: pert_clds
 
     real, intent (in), dimension (ktop:kbot) :: p1, dp1, den, denfac, vts, vtg, vtr
     real, optional,intent (in), dimension (ktop:kbot) :: sppt_wts
@@ -1987,12 +1987,12 @@ subroutine icloud (ktop, kbot, tzk, p1, qvk, qlk, qrk, qik, qsk, qgk, dp1, &
     ! -----------------------------------------------------------------------
     !> - Call subgrid_z_proc() for subgrid cloud microphysics.
     ! -----------------------------------------------------------------------
-    if (do_sppt) then
+    if (pert_clds) then
        call subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tzk, qvk, &
-           qlk, qrk, qik, qsk, qgk, qak, h_var, rh_rain,do_sppt,sppt_wts=sppt_wts)
+           qlk, qrk, qik, qsk, qgk, qak, h_var, rh_rain,pert_clds,sppt_wts=sppt_wts)
     else
        call subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tzk, qvk, &
-           qlk, qrk, qik, qsk, qgk, qak, h_var, rh_rain,do_sppt)
+           qlk, qrk, qik, qsk, qgk, qak, h_var, rh_rain,pert_clds)
     endif
 
 end subroutine icloud
@@ -2004,13 +2004,13 @@ end subroutine icloud
 !>\section gen_subz GFDL Cloud subgrid_z_proc General Algorithm
 !! @{
 subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
-    ql, qr, qi, qs, qg, qa, h_var, rh_rain,do_sppt,sppt_wts)
+    ql, qr, qi, qs, qg, qa, h_var, rh_rain,pert_clds,sppt_wts)
 
     implicit none
 
     integer, intent (in) :: ktop, kbot
     
-    logical, intent(in) :: do_sppt
+    logical, intent(in) :: pert_clds
 
     real, intent (in), dimension (ktop:kbot) :: p1, den, denfac
     real, optional,intent (in), dimension (ktop:kbot) :: sppt_wts
@@ -2364,11 +2364,11 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         else
             q_liq (k) = ql (k)
         endif
-        !if (do_sppt) then
-        !   q_cond (k) = (q_liq (k) + q_sol (k))*sppt_wts(30)
-        !else
+        if (pert_clds) then
+           q_cond (k) = (q_liq (k) + q_sol (k))*sppt_wts(30)
+        else
            q_cond (k) = (q_liq (k) + q_sol (k))
-        !endif
+        endif
 
         qpz = qv (k) + q_cond (k) ! qpz is conserved
 
@@ -2404,6 +2404,9 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
             endif
             qstar = rqi * qsi + (1. - rqi) * qsw
         endif
+        if (pert_clds) then
+           qstar = qstar*sppt_wts(30)
+        endif
 
         ! -----------------------------------------------------------------------
         !> - Compute cloud fraction, assuming subgrid linear distribution in horizontal;
@@ -2412,8 +2415,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
 
         if (qpz > qrmin) then
             ! partial cloudiness by pdf:
-            if (do_sppt) then
-               dq = max (qcmin, h_var * qpz)*sppt_wts(30)
+            if (pert_clds) then
+               dq = max (qcmin, h_var * qpz)*(2.0-sppt_wts(30))
             else
                dq = max (qcmin, h_var * qpz)
             endif

@@ -60,7 +60,9 @@ errflg = 0
 
 ! replace
 dtp=Model%dtp
-call init_stochdata(dtp,Model%input_nml_file,Model%fn_nml,Model%nlunit)
+print*,'calling init_stochdata'
+call init_stochdata(dtp,Model%fn_nml,Model%nlunit)
+print*,'back from init_stochdata'
 ! check to see decomposition
 Model%pert_clds=pert_clds
 Model%do_sppt=do_sppt
@@ -172,14 +174,13 @@ first_call=.false.
 
 end subroutine stochastic_physics_run
 
-subroutine stochy_namelist(sz_nml,input_nml_file,fn_nml,nlunit,deltim,iret)
+subroutine stochy_namelist(fn_nml,nlunit,deltim,iret)
       
 implicit none
 
  
       integer,              intent(out)   :: iret
-      integer,              intent(in)    :: nlunit,sz_nml
-      character(len=*),     intent(in)    :: input_nml_file(sz_nml)
+      integer,              intent(in)    :: nlunit
       character(len=64),    intent(in)    :: fn_nml
       real,                 intent(in)    :: deltim
       real tol
@@ -194,7 +195,9 @@ implicit none
       shum_sigefold,use_zmtnblck, &
       nsfcpert,pertz0,pertshc,pertzt,pertlai, & ! mg, sfcperts
       pertvegf,pertalb,iseed_sfc,sfc_tau,sppt_land
+      print*,'in namelist'
       tol=0.01  ! tolerance for calculations
+      print*,'in namelist'
 !     spectral resolution defintion
       ! can specify up to 5 values for the stochastic physics parameters 
       ! (each is an array of length 5)
@@ -226,16 +229,13 @@ implicit none
 ! reduce amplitude of sppt near surface (lowest 2 levels)
       sppt_sfclimit = .false.
       sppt_logit        = .false. ! logit transform for sppt to bounded interval [-1,+1]
+      print*,'about to read namelist'
 
-#ifdef INTERNAL_FILE_NML
-      read(input_nml_file, nml=nam_stochy)
-#else
       rewind (nlunit)
       open (unit=nlunit, file=fn_nml, READONLY, status='OLD', iostat=ios)
       read(nlunit,nam_stochy)
-#endif
 
-      print *,' in stochy_namelist'
+      print*,'read namelist'
 
 ! PJP stochastic physics additions
       IF (sppt(1) > 0 ) THEN
@@ -272,18 +272,16 @@ implicit none
 ! set up and initialize stochastic random patterns.
 
 
- subroutine init_stochdata(delt,input_nml_file,fn_nml,nlunit)
+ subroutine init_stochdata(delt,fn_nml,nlunit)
 
 ! initialize random patterns.  A spinup period of spinup_efolds times the
 ! temporal time scale is run for each pattern.  
    integer, intent(in) :: nlunit
-   character(len=*),  intent(in) :: input_nml_file(:)
    character(len=64), intent(in) :: fn_nml
    real, intent(in) :: delt
 
    integer :: stochlun,iret,n
-   print*,'in init stochdata'
-   call stochy_namelist(size(input_nml_file,1),input_nml_file(:),fn_nml,nlunit,delt,iret)
+   call stochy_namelist(fn_nml,nlunit,delt,iret)
    if ( (.NOT. do_sppt) .AND. (.NOT. do_shum) ) return
    stochlun=99
    iret=0

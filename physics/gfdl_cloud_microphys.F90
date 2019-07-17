@@ -167,8 +167,8 @@ contains
 !! | rer              | effective_radius_of_stratiform_cloud_rain_particle_in_um         | effective radius of cloud rain particle in micrometers                | um         |    2 | real      | kind_phys | inout | F        |
 !! | res              | effective_radius_of_stratiform_cloud_snow_particle_in_um         | effective radius of cloud snow particle in micrometers                | um         |    2 | real      | kind_phys | inout | F        |
 !! | reg              | effective_radius_of_stratiform_cloud_graupel_particle_in_um      | eff. radius of cloud graupel particle in micrometer                   | um         |    2 | real      | kind_phys | inout | F        |
-!! | do_sppt          | flag_for_stochastic_surface_physics_perturbations                | flag for stochastic surface physics perturbations                                   | flag          |    0 | logical               |           | in   | F        |
-!! | sppt_wts       | weights_for_stochastic_sppt_perturbation                                  | weights for stochastic sppt perturbation                     | none    |    2 | real      | kind_phys | inout  | F        |
+!! | pert_clds        | flag_for_stochastic_cloud_perturbations                          | flag for stochastic cloud sperturbations                              | flag       |    0 | logical   |           | in    | F        |
+!! | sppt_wts         | weights_for_stochastic_sppt_perturbation                         | weights for stochastic sppt perturbation                              | none       |    2 | real      | kind_phys | inout | F        |
 !! | errmsg           | ccpp_error_message                                               | error message for error handling in CCPP                              | none       |    0 | character | len=*     | out   | F        |
 !! | errflg           | ccpp_error_flag                                                  | error flag for error handling in CCPP                                 | flag       |    0 | integer   |           | out   | F        |
 !!
@@ -178,7 +178,7 @@ contains
       gt0, gu0, gv0, vvl, prsl, phii, del,                                    &
       rain0, ice0, snow0, graupel0, prcp0, sr,                                &
       dtp, hydrostatic, phys_hydrostatic, lradar, refl_10cm,                  &
-      kdt, nsteps_per_reset, effr_in, rew, rei, rer, res, reg, do_sppt,sppt_wts, errmsg, errflg)
+      kdt, nsteps_per_reset, effr_in, rew, rei, rer, res, reg, pert_clds,sppt_wts, errmsg, errflg)
 
       use machine, only: kind_phys
 
@@ -215,7 +215,7 @@ contains
       real(kind_phys),      intent(out  ), dimension(1:im) :: sr
 
       real(kind_phys),      intent(in) :: dtp ! physics time step
-      logical, intent (in) :: hydrostatic, phys_hydrostatic,do_sppt
+      logical, intent (in) :: hydrostatic, phys_hydrostatic,pert_clds
 
       logical, intent (in) :: lradar
       real(kind=kind_phys), intent(inout), dimension(1:im,1:levs) :: refl_10cm
@@ -300,7 +300,7 @@ contains
                  qv1, ql1, qr1, qi1, qs1, qg1, qa1, qn1, qv_dt, ql_dt, qr_dt, qi_dt, &
                  qs_dt, qg_dt, qa_dt, pt_dt, pt, w,  uin, vin, u_dt, v_dt, dz, delp, &
                  garea, dtp, frland, rain0, snow0, ice0, graupel0, hydrostatic,      &
-                 phys_hydrostatic, p123, lradar, refl, kdt, nsteps_per_reset,do_sppt,sppt_wts)
+                 phys_hydrostatic, p123, lradar, refl, kdt, nsteps_per_reset,pert_clds,sppt_wts)
       tem   = dtp*con_p001/con_day
 
       ! fix negative values
