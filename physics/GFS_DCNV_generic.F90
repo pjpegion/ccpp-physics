@@ -18,6 +18,7 @@
 !! |-----------------|--------------------------------------------------------|---------------------------------------------------------------------------|---------|------|-----------|-----------|--------|----------|
 !! | im              | horizontal_loop_extent                                 | horizontal loop extent                                                    | count   |    0 | integer   |           | in     | F        |
 !! | levs            | vertical_dimension                                     | vertical layer dimension                                                  | count   |    0 | integer   |           | in     | F        |
+!! | nn              | number_of_tracers_for_convective_transport             | number of tracers for convective transport                                | count   |    0 | integer   |           | in     | F        |
 !! | ldiag3d         | flag_diagnostics_3D                                    | flag for 3d diagnostic fields                                             | flag    |    0 | logical   |           | in     | F        |
 !! | cnvgwd          | flag_convective_gravity_wave_drag                      | flag for conv gravity wave drag                                           | flag    |    0 | logical   |           | in     | F        |
 !! | lgocart         | flag_gocart                                            | flag for 3d diagnostic fields for gocart 1                                | flag    |    0 | logical   |           | in     | F        |
@@ -26,35 +27,40 @@
 !! | gu0             | x_wind_updated_by_physics                              | zonal wind updated by physics                                             | m s-1   |    2 | real      | kind_phys | in     | F        |
 !! | gv0             | y_wind_updated_by_physics                              | meridional wind updated by physics                                        | m s-1   |    2 | real      | kind_phys | in     | F        |
 !! | gt0             | air_temperature_updated_by_physics                     | temperature updated by physics                                            | K       |    2 | real      | kind_phys | in     | F        |
+!! | clw             | convective_transportable_tracers                       | array to contain cloud water and other convective trans. tracers          | kg kg-1 |    3 | real      | kind_phys | inout  | F        |
 !! | gq0_water_vapor | water_vapor_specific_humidity_updated_by_physics       | water vapor specific humidity updated by physics                          | kg kg-1 |    2 | real      | kind_phys | inout  | F        |
 !! | save_u          | x_wind_save                                            | x-wind before entering a physics scheme                                   | m s-1   |    2 | real      | kind_phys | inout  | F        |
 !! | save_v          | y_wind_save                                            | y-wind before entering a physics scheme                                   | m s-1   |    2 | real      | kind_phys | inout  | F        |
 !! | save_t          | air_temperature_save                                   | air temperature before entering a physics scheme                          | K       |    2 | real      | kind_phys | inout  | F        |
 !! | save_qv         | water_vapor_specific_humidity_save                     | water vapor specific humidity before entering a physics scheme            | kg kg-1 |    2 | real      | kind_phys | inout  | F        |
+!! | save_qc         | cloud_condensate_save                                  | total cloud condensate before entering a physics scheme                   | kg kg-1 |    2 | real      | kind_phys | inout  | F        |
 !! | ca_deep         | fraction_of_cellular_automata_for_deep_convection      | fraction of cellular automata for deep convection                         | frac    |    1 | real      | kind_phys | in     | F        |
 !! | errmsg          | ccpp_error_message                                     | error message for error handling in CCPP                                  | none    |    0 | character | len=*     | out    | F        |
 !! | errflg          | ccpp_error_flag                                        | error flag for error handling in CCPP                                     | flag    |    0 | integer   |           | out    | F        |
 !!
 #endif
-    subroutine GFS_DCNV_generic_pre_run (im, levs, ldiag3d, cnvgwd, lgocart, do_ca,     &
-                                         isppt_deep, gu0, gv0, gt0, gq0_water_vapor,    &
-                                         save_u, save_v, save_t, save_qv, ca_deep,      &
-                                         errmsg, errflg)
+    subroutine GFS_DCNV_generic_pre_run (im, levs, nn, ldiag3d, cnvgwd,     &
+                                         lgocart, do_ca, isppt_deep, gu0, gv0, gt0, clw,   &
+                                         gq0_water_vapor,                                  &
+                                         save_u, save_v, save_t, save_qv, save_qc,         &
+                                         ca_deep, errmsg, errflg)
 
       use machine,               only: kind_phys
 
       implicit none
 
-      integer, intent(in) :: im, levs
+      integer, intent(in) :: im, levs, nn
       logical, intent(in) :: ldiag3d, cnvgwd, lgocart, do_ca, isppt_deep
       real(kind=kind_phys), dimension(im,levs), intent(in)    :: gu0
       real(kind=kind_phys), dimension(im,levs), intent(in)    :: gv0
       real(kind=kind_phys), dimension(im,levs), intent(in)    :: gt0
       real(kind=kind_phys), dimension(im,levs), intent(inout) :: gq0_water_vapor
+      real(kind=kind_phys), dimension(im,levs,nn), intent(in) :: clw
       real(kind=kind_phys), dimension(im,levs), intent(inout) :: save_u
       real(kind=kind_phys), dimension(im,levs), intent(inout) :: save_v
       real(kind=kind_phys), dimension(im,levs), intent(inout) :: save_t
       real(kind=kind_phys), dimension(im,levs), intent(inout) :: save_qv
+      real(kind=kind_phys), dimension(im,levs), intent(inout) :: save_qc
       real(kind=kind_phys), dimension(im),      intent(in)    :: ca_deep
       character(len=*), intent(out) :: errmsg
       integer, intent(out) :: errflg
@@ -79,6 +85,7 @@
             save_t(i,k) = gt0(i,k)
             save_u(i,k) = gu0(i,k)
             save_v(i,k) = gv0(i,k)
+            save_qc(i,k) = SUM(clw(i,k,:))
           enddo
         enddo
       elseif (cnvgwd) then
@@ -109,6 +116,7 @@
 !! |-----------------|---------------------------------------------------------------------------------------------|----------------------------------------------------------------------|---------------|------|-------------------|-----------|--------|----------|
 !! | im              | horizontal_loop_extent                                                                      | horizontal loop extent                                               | count         |    0 | integer           |           | in     | F        |
 !! | levs            | vertical_dimension                                                                          | vertical layer dimension                                             | count         |    0 | integer           |           | in     | F        |
+!! | nn              | number_of_tracers_for_convective_transport                                                  | number of tracers for convective transport                           | count         |    0 | integer           |           | in     | F        |
 !! | lssav           | flag_diagnostics                                                                            | logical flag for storing diagnostics                                 | flag          |    0 | logical           |           | in     | F        |
 !! | ldiag3d         | flag_diagnostics_3D                                                                         | flag for 3d diagnostic fields                                        | flag          |    0 | logical           |           | in     | F        |
 !! | lgocart         | flag_gocart                                                                                 | flag for 3d diagnostic fields for gocart 1                           | flag          |    0 | logical           |           | in     | F        |
@@ -124,9 +132,11 @@
 !! | save_v          | y_wind_save                                                                                 | y-wind before entering a physics scheme                              | m s-1         |    2 | real              | kind_phys | in     | F        |
 !! | save_t          | air_temperature_save                                                                        | air temperature before entering a physics scheme                     | K             |    2 | real              | kind_phys | in     | F        |
 !! | save_qv         | water_vapor_specific_humidity_save                                                          | water vapor specific humidity before entering a physics scheme       | kg kg-1       |    2 | real              | kind_phys | in     | F        |
+!! | save_qc         | cloud_condensate_save                                                                       | total cloud condensate before entering a physics scheme              | kg kg-1       |    2 | real              | kind_phys | in     | F        |
 !! | gu0             | x_wind_updated_by_physics                                                                   | zonal wind updated by physics                                        | m s-1         |    2 | real              | kind_phys | in     | F        |
 !! | gv0             | y_wind_updated_by_physics                                                                   | meridional wind updated by physics                                   | m s-1         |    2 | real              | kind_phys | in     | F        |
 !! | gt0             | air_temperature_updated_by_physics                                                          | temperature updated by physics                                       | K             |    2 | real              | kind_phys | in     | F        |
+!! | clw             | convective_transportable_tracers                                                            | array to contain cloud water and other convective trans. tracers     | kg kg-1       |    3 | real              | kind_phys | in     | F        |
 !! | gq0_water_vapor | water_vapor_specific_humidity_updated_by_physics                                            | water vapor specific humidity updated by physics                     | kg kg-1       |    2 | real              | kind_phys | in     | F        |
 !! | ud_mf           | instantaneous_atmosphere_updraft_convective_mass_flux                                       | (updraft mass flux) * delt                                           | kg m-2        |    2 | real              | kind_phys | in     | F        |
 !! | dd_mf           | instantaneous_atmosphere_downdraft_convective_mass_flux                                     | (downdraft mass flux) * delt                                         | kg m-2        |    2 | real              | kind_phys | in     | F        |
@@ -143,6 +153,7 @@
 !! | cnvprcpb        | cumulative_lwe_thickness_of_convective_precipitation_amount_in_bucket                       | cumulative convective precipitation in bucket                        | m             |    1 | real              | kind_phys | inout  | F        |
 !! | dt3dt           | cumulative_change_in_temperature_due_to_deep_convection                                     | cumulative change in temperature due to deep conv.                   | K             |    2 | real              | kind_phys | inout  | F        |
 !! | dq3dt           | cumulative_change_in_water_vapor_specific_humidity_due_to_deep_convection                   | cumulative change in water vapor specific humidity due to deep conv. | kg kg-1       |    2 | real              | kind_phys | inout  | F        |
+!! | dqc3dt          | cumulative_change_in_cloud_condensate_due_to_deep_convection                                | cumulative change in cloud condensate due to deep convection         | kg kg-1     |    2 | real       | kind_phys | inout  | F        |
 !! | du3dt           | cumulative_change_in_x_wind_due_to_deep_convection                                          | cumulative change in x wind due to deep convection                   | m s-1         |    2 | real              | kind_phys | inout  | F        |
 !! | dv3dt           | cumulative_change_in_y_wind_due_to_deep_convection                                          | cumulative change in y wind due to deep convection                   | m s-1         |    2 | real              | kind_phys | inout  | F        |
 !! | upd_mf          | cumulative_atmosphere_updraft_convective_mass_flux                                          | cumulative updraft mass flux                                         | Pa            |    2 | real              | kind_phys | inout  | F        |
@@ -166,24 +177,25 @@
 !! | errflg          | ccpp_error_flag                                                                             | error flag for error handling in CCPP                                | flag          |    0 | integer           |           | out    | F        |
 !!
 #endif
-    subroutine GFS_DCNV_generic_post_run (im, levs, lssav, ldiag3d, lgocart, ras, cscnv, do_ca,      &
-      isppt_deep, frain, rain1, dtf, cld1d, save_u, save_v, save_t, save_qv, gu0, gv0, gt0,          &
-      gq0_water_vapor, ud_mf, dd_mf, dt_mf, con_g, clw_ice, clw_liquid, npdf3d, num_p3d, ncnvcld3d,  &
-      rainc, cldwrk, cnvprcp, cnvprcpb, dt3dt, dq3dt, du3dt, dv3dt, upd_mf, dwn_mf, det_mf, dqdti,   &
-      cnvqci, upd_mfi, dwn_mfi, det_mfi, cnvw, cnvc, cnvw_phy_f3d, cnvc_phy_f3d,                     &
+    subroutine GFS_DCNV_generic_post_run (im, levs, lssav, ldiag3d, lgocart, ras, cscnv, do_ca,           &
+      isppt_deep, frain, rain1, dtf, cld1d, save_u, save_v, save_t, save_qv, save_qc, gu0, gv0, gt0, clw, &
+      gq0_water_vapor, ud_mf, dd_mf, dt_mf, con_g, clw_ice, clw_liquid, npdf3d, num_p3d, ncnvcld3d,       &
+      rainc, cldwrk, cnvprcp, cnvprcpb, dt3dt, dq3dt, dqc3dt, du3dt, dv3dt, upd_mf, dwn_mf, det_mf, dqdti,&
+      cnvqci, upd_mfi, dwn_mfi, det_mfi, cnvw, cnvc, cnvw_phy_f3d, cnvc_phy_f3d, nn,                      &
       cape, tconvtend, qconvtend, uconvtend, vconvtend, errmsg, errflg)
 
       use machine,               only: kind_phys
 
       implicit none
 
-      integer, intent(in) :: im, levs
+      integer, intent(in) :: im, levs, nn
       logical, intent(in) :: lssav, ldiag3d, lgocart, ras, cscnv, do_ca, isppt_deep
 
       real(kind=kind_phys), intent(in) :: frain, dtf
       real(kind=kind_phys), dimension(im), intent(in) :: rain1, cld1d
-      real(kind=kind_phys), dimension(im,levs), intent(in) :: save_u, save_v, save_t, save_qv
+      real(kind=kind_phys), dimension(im,levs), intent(in) :: save_u, save_v, save_t, save_qv,save_qc
       real(kind=kind_phys), dimension(im,levs), intent(in) :: gu0, gv0, gt0, gq0_water_vapor
+      real(kind=kind_phys), dimension(im,levs,nn), intent(in) :: clw
       real(kind=kind_phys), dimension(im,levs), intent(in) :: ud_mf, dd_mf, dt_mf
       real(kind=kind_phys), intent(in) :: con_g
       real(kind=kind_phys), dimension(im,levs), intent(in) :: clw_ice, clw_liquid
@@ -191,7 +203,7 @@
 
       real(kind=kind_phys), dimension(im), intent(inout) :: rainc, cldwrk, cnvprcp, cnvprcpb
       ! dt3dt, dq3dt, du3dt, dv3dt upd_mf, dwn_mf, det_mf only allocated if ldiag3d == .true.
-      real(kind=kind_phys), dimension(:,:), intent(inout) :: dt3dt, dq3dt, du3dt, dv3dt
+      real(kind=kind_phys), dimension(:,:), intent(inout) :: dt3dt, dq3dt, dqc3dt, du3dt, dv3dt
       real(kind=kind_phys), dimension(:,:), intent(inout) :: upd_mf, dwn_mf, det_mf
       ! dqdti, cnvqci, upd_mfi, dwn_mfi, det_mfi only allocated if ldiag3d == .true. or lgocart == .true.
       real(kind=kind_phys), dimension(:,:), intent(inout) :: dqdti, cnvqci, upd_mfi, dwn_mfi, det_mfi
@@ -254,9 +266,10 @@
           do k=1,levs
             do i=1,im
               dt3dt(i,k) = dt3dt(i,k) + (gt0(i,k)-save_t(i,k)) * frain
-!              dq3dt(i,k) = dq3dt(i,k) + (gq0_water_vapor(i,k)-save_qv(i,k)) * frain
+              dq3dt(i,k) = dq3dt(i,k) + (gq0_water_vapor(i,k)-save_qv(i,k)) * frain
               du3dt(i,k) = du3dt(i,k) + (gu0(i,k)-save_u(i,k)) * frain
               dv3dt(i,k) = dv3dt(i,k) + (gv0(i,k)-save_v(i,k)) * frain
+              dqc3dt(i,k) = dqc3dt(i,k) + (SUM(clw(i,k,:))-save_qc(i,k)) * frain
 
 !              upd_mf(i,k)  = upd_mf(i,k)  + ud_mf(i,k) * (con_g*frain)
 !              dwn_mf(i,k)  = dwn_mf(i,k)  + dd_mf(i,k) * (con_g*frain)

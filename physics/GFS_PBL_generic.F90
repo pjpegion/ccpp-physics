@@ -49,8 +49,8 @@
 !! | errflg                       | ccpp_error_flag                                        | error flag for error handling in CCPP                                               | flag          |    0 | integer   |           | out    | F        |
 !!
 #endif
-      subroutine GFS_PBL_generic_pre_run (im, levs, nvdiff, ntrac,                       &
-        ntqv, ntcw, ntiw, ntrw, ntsw, ntlnc, ntinc, ntwa, ntia, ntgl, ntoz, ntke, ntkev, &
+      subroutine GFS_PBL_generic_pre_run (im, levs, nvdiff, ntrac, ntqv, ntcw, ntiw,     &
+        ntrw, ntsw, ntlnc, ntinc, ntwa, ntia, ntgl, ntoz, ntke, ntkev,                   &
         imp_physics, imp_physics_gfdl, imp_physics_thompson, imp_physics_wsm6,           &
         imp_physics_zhao_carr, cplchm, ltaerosol, hybedmf, do_shoc, satmedmf,            &
         qgrs, vdftra, errmsg, errflg)
@@ -179,6 +179,7 @@
 !! | levs                         | vertical_dimension                                                                | vertical layer dimension                                                                    | count         |    0 | integer   |           | in     | F        |
 !! | nvdiff                       | number_of_vertical_diffusion_tracers                                              | number of tracers to diffuse vertically                                                     | count         |    0 | integer   |           | in     | F        |
 !! | ntrac                        | number_of_tracers                                                                 | number of tracers                                                                           | count         |    0 | integer   |           | in     | F        |
+!! | nncl                         | number_of_tracers_for_cloud_condensate                                            | number of tracers for cloud condensate                                                      | count         |    0 | integer   |           | in     | F        |
 !! | ntqv                         | index_for_water_vapor                                                             | tracer index for water vapor (specific humidity)                                            | index         |    0 | integer   |           | in     | F        |
 !! | ntcw                         | index_for_liquid_cloud_condensate                                                 | tracer index for cloud condensate (or liquid water)                                         | index         |    0 | integer   |           | in     | F        |
 !! | ntiw                         | index_for_ice_cloud_condensate                                                    | tracer index for  ice water                                                                 | index         |    0 | integer   |           | in     | F        |
@@ -243,12 +244,13 @@
 !! | dv3dt_PBL                    | cumulative_change_in_y_wind_due_to_PBL                                            | cumulative change in y wind due to PBL                                                      | m s-1         |    2 | real      | kind_phys | inout  | F        |
 !! | dv3dt_OGWD                   | cumulative_change_in_y_wind_due_to_orographic_gravity_wave_drag                   | cumulative change in y wind due to orographic gravity wave drag                             | m s-1         |    2 | real      | kind_phys | inout  | F        |
 !! | dq3dt                        | cumulative_change_in_water_vapor_specific_humidity_due_to_PBL                     | cumulative change in water vapor specific humidity due to PBL                               | kg kg-1       |    2 | real      | kind_phys | inout  | F        |
+!! | dqc3dt                       | cumulative_change_in_cloud_condensate_due_to_PBL                                  | cumulative change in cloud condensate due to PBL                                            | kg kg-1       |    2 | real      | kind_phys | inout  | F        |
 !! | dq3dt_ozone                  | cumulative_change_in_ozone_mixing_ratio_due_to_PBL                                | cumulative change in ozone mixing ratio due to PBL                                          | kg kg-1       |    2 | real      | kind_phys | inout  | F        |
 !! | errmsg                       | ccpp_error_message                                                                | error message for error handling in CCPP                                                    | none          |    0 | character | len=*     | out    | F        |
 !! | errflg                       | ccpp_error_flag                                                                   | error flag for error handling in CCPP                                                       | flag          |    0 | integer   |           | out    | F        |
 !!
 #endif
-      subroutine GFS_PBL_generic_post_run (im, levs, nvdiff, ntrac,                                                            &
+      subroutine GFS_PBL_generic_post_run (im, levs, nvdiff, ntrac, nncl,                                                      &
         ntqv, ntcw, ntiw, ntrw, ntsw, ntlnc, ntinc, ntwa, ntia, ntgl, ntoz, ntke, ntkev,                                       &
         imp_physics, imp_physics_gfdl, imp_physics_thompson, imp_physics_wsm6, imp_physics_zhao_carr,                          &
         ltaerosol, cplflx, cplchm, lssav, ldiag3d, lsidea, hybedmf, do_shoc, satmedmf, shinhong, do_ysu,                       &
@@ -256,13 +258,13 @@
         dqdt, dusfc_cpl, dvsfc_cpl, dtsfc_cpl,                                                                                 &
         dqsfc_cpl, dusfci_cpl, dvsfci_cpl, dtsfci_cpl, dqsfci_cpl, dusfc_diag, dvsfc_diag, dtsfc_diag, dqsfc_diag,             &
         dusfci_diag, dvsfci_diag, dtsfci_diag, dqsfci_diag, dt3dt, du3dt_PBL, du3dt_OGWD, dv3dt_PBL, dv3dt_OGWD, dq3dt,        &
-        dq3dt_ozone, errmsg, errflg)
+        dqc3dt, dq3dt_ozone, errmsg, errflg)
 
       use machine,               only: kind_phys
 
       implicit none
 
-      integer, intent(in) :: im, levs, nvdiff, ntrac
+      integer, intent(in) :: im, levs, nvdiff, ntrac, nncl
       integer, intent(in) :: ntqv, ntcw, ntiw, ntrw, ntsw, ntlnc, ntinc, ntwa, ntia, ntgl, ntoz, ntke, ntkev
       integer, intent(in) :: imp_physics, imp_physics_gfdl, imp_physics_thompson, imp_physics_wsm6
       integer, intent(in) :: imp_physics_zhao_carr
@@ -280,7 +282,7 @@
       ! Since Intel 15 crashes when passing unallocated arrays to arrays defined with explicit shape,
       ! use assumed-shape arrays. Note that Intel 18 and GNU 6.2.0-8.1.0 tolerate explicit-shape arrays
       ! as long as these do not get used when not allocated.
-      real(kind=kind_phys), dimension(:,:), intent(inout) :: dt3dt, du3dt_PBL, du3dt_OGWD, dv3dt_PBL, dv3dt_OGWD, dq3dt, dq3dt_ozone
+      real(kind=kind_phys), dimension(:,:), intent(inout) :: dt3dt, du3dt_PBL, du3dt_OGWD, dv3dt_PBL, dv3dt_OGWD, dq3dt, dq3dt_ozone,dqc3dt
       real(kind=kind_phys), dimension(:), intent(inout) :: dusfc_cpl, dvsfc_cpl, dtsfc_cpl, dqsfc_cpl, dusfci_cpl, dvsfci_cpl, &
         dtsfci_cpl, dqsfci_cpl, dusfc_diag, dvsfc_diag, dtsfc_diag, dqsfc_diag, dusfci_diag, dvsfci_diag, dtsfci_diag, dqsfci_diag
       ! *DH
@@ -453,12 +455,13 @@
   !             enddo
   !           enddo
   !         endif
-!          do k=1,levs
-!            do i=1,im
-!              tem  = dqdt(i,k,ntqv) * dtf
-!              dq3dt(i,k) = dq3dt(i,k) + tem
-!            enddo
-!          enddo
+          do k=1,levs
+            do i=1,im
+              tem  = dqdt(i,k,ntqv) * dtf
+              dq3dt(i,k) = dq3dt(i,k) + tem
+              dqc3dt(i,k) = dqc3dt(i,k) + SUM(dqdt(i,k,ntcw:ntcw+nncl-1)) * dtf
+            enddo
+          enddo
 !          if (ntoz > 0) then
 !            do k=1,levs
 !              do i=1,im

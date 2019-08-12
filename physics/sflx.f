@@ -928,7 +928,6 @@
 !!  convert runoff3 (internal layer runoff from supersat) from \f$m\f$
 !!  to \f$ms^-1\f$ and add to subsurface runoff/baseflow (runoff2).
 !!  runoff2 is already a rate at this point.
-
         runoff3 = runoff3 / dt
         runoff2 = runoff2 + runoff3
 
@@ -5194,6 +5193,7 @@ c ----------------------------------------------------------------------
         if (k == nsoil) then
           runoff2 = slopx * wcnd2
         endif
+       
 
         if (k /= nsoil) then
           wdf  = wdf2

@@ -2364,11 +2364,11 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
         else
             q_liq (k) = ql (k)
         endif
-        if (pert_clds) then
-           q_cond (k) = (q_liq (k) + q_sol (k))*sppt_wts(30)
-        else
+        !if (pert_clds) then
+        !   q_cond (k) = (q_liq (k) + q_sol (k))*sppt_wts(30)
+        !else
            q_cond (k) = (q_liq (k) + q_sol (k))
-        endif
+        !endif
 
         qpz = qv (k) + q_cond (k) ! qpz is conserved
 
@@ -2405,7 +2405,8 @@ subroutine subgrid_z_proc (ktop, kbot, p1, den, denfac, dts, rh_adj, tz, qv, &
             qstar = rqi * qsi + (1. - rqi) * qsw
         endif
         if (pert_clds) then
-           qstar = qstar*sppt_wts(30)
+           qstar = qstar*(1+0.1*(1-sppt_wts(30)))
+           !qstar = qstar*sppt_wts(30)
         endif
 
         ! -----------------------------------------------------------------------

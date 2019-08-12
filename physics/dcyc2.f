@@ -343,7 +343,6 @@
      &                             - swhc(i,k)*xmu(i) - hlwc(i,k)
         enddo
       enddo
-      print*,'in dcyc',pert_clds,dtdtnp(1,20)
 !
       return
 !...................................

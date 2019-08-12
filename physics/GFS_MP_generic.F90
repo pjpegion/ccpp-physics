@@ -26,11 +26,12 @@
 !! | gt0            | air_temperature_updated_by_physics                     | temperature updated by physics                                            | K           |    2 | real      | kind_phys | in     | F        |
 !! | gq0            | tracer_concentration_updated_by_physics                | tracer concentration updated by physics                                   | kg kg-1     |    3 | real      | kind_phys | in     | F        |
 !! | save_t         | air_temperature_save                                   | air temperature before entering a physics scheme                          | K           |    2 | real      | kind_phys | inout  | F        |
+!! | save_qc        | cloud_condensate_save                                  | total cloud condensate before entering a physics scheme                   | kg kg-1     |    2 | real      | kind_phys | inout  | F        |
 !! | save_q         | tracer_concentration_save                              | tracer concentration before entering a physics scheme                     | kg kg-1     |    3 | real      | kind_phys | inout  | F        |
 !! | errmsg         | ccpp_error_message                                     | error message for error handling in CCPP                                  | none        |    0 | character | len=*     | out    | F        |
 !! | errflg         | ccpp_error_flag                                        | error flag for error handling in CCPP                                     | flag        |    0 | integer   |           | out    | F        |
 !!
-      subroutine GFS_MP_generic_pre_run(im, levs, ldiag3d, do_aw, ntcw, nncl, ntrac, gt0, gq0, save_t, save_q, errmsg, errflg)
+      subroutine GFS_MP_generic_pre_run(im, levs, ldiag3d, do_aw, ntcw, nncl, ntrac, gt0, gq0, save_t, save_qc,save_q, errmsg, errflg)
 !
       use machine,               only: kind_phys
 
@@ -41,6 +42,7 @@
       real(kind=kind_phys), dimension(im, levs, ntrac), intent(in) :: gq0
 
       real(kind=kind_phys), dimension(im, levs),        intent(inout) :: save_t
+      real(kind=kind_phys), dimension(im, levs),        intent(inout) :: save_qc
       real(kind=kind_phys), dimension(im, levs, ntrac), intent(inout) :: save_q
 
       character(len=*), intent(out) :: errmsg
@@ -54,15 +56,16 @@
 
       if (ldiag3d .or. do_aw) then
         do k=1,levs
-          do i=1,im
-            save_t(i,k) = gt0(i,k)
-            save_q(1:im,:,1) = gq0(1:im,:,1)
-          enddo
+           do i=1,im
+              save_t(i,k) = gt0(i,k)
+              save_q(i,k,1) = gq0(i,k,1)
+              save_qc(i,k) = SUM(gq0(i,k,ntcw:ntcw+nncl-1))
+              do n=ntcw,ntcw+nncl-1
+                 save_q(i,k,n) = gq0(i,k,n)
+              enddo
+           enddo
         enddo
-        do n=ntcw,ntcw+nncl-1
-          save_q(1:im,:,n) = gq0(1:im,:,n)
-        enddo
-      endif
+     endif
 
       end subroutine GFS_MP_generic_pre_run
 
@@ -128,6 +131,7 @@
 !! | graupel          | lwe_thickness_of_graupel_amount_on_dynamics_timestep                    | graupel fall at this time step                                          | m           |    1 | real       | kind_phys | inout  | F        |
 !! | save_t           | air_temperature_save                                                    | air temperature before entering a physics scheme                        | K           |    2 | real       | kind_phys | in     | F        |
 !! | save_qv          | water_vapor_specific_humidity_save                                      | water vapor specific humidity before entering a physics scheme          | kg kg-1     |    2 | real       | kind_phys | in     | F        |
+!! | save_qc          | cloud_condensate_save                                                   | total cloud condensate before entering a physics scheme                 | kg kg-1     |    2 | real       | kind_phys | in     | F        |
 !! | rain0            | lwe_thickness_of_explicit_rain_amount                                   | explicit rain on physics timestep                                       | m           |    1 | real       | kind_phys | in     | F        |
 !! | ice0             | lwe_thickness_of_ice_amount                                             | ice fall on physics timestep                                            | m           |    1 | real       | kind_phys | in     | F        |
 !! | snow0            | lwe_thickness_of_snow_amount                                            | snow fall on physics timestep                                           | m           |    1 | real       | kind_phys | in     | F        |
@@ -150,6 +154,7 @@
 !! | totgrpb          | accumulated_lwe_thickness_of_graupel_amount_in_bucket                   | accumulated graupel precipitation in bucket                             | kg m-2      |    1 | real       | kind_phys | inout  | F        |
 !! | dt3dt            | cumulative_change_in_temperature_due_to_microphysics                    | cumulative change in temperature due to microphysics                    | K           |    2 | real       | kind_phys | inout  | F        |
 !! | dq3dt            | cumulative_change_in_water_vapor_specific_humidity_due_to_microphysics  | cumulative change in water vapor specific humidity due to microphysics  | kg kg-1     |    2 | real       | kind_phys | inout  | F        |
+!! | dqc3dt           | cumulative_change_in_cloud_condensate_due_to_microphysics               | cumulative change in cloud condensate due to microphysics               | kg kg-1     |    2 | real       | kind_phys | inout  | F        |
 !! | rain_cpl         | lwe_thickness_of_precipitation_amount_for_coupling                      | total rain precipitation                                                | m           |    1 | real       | kind_phys | inout  | F        |
 !! | rainc_cpl        | lwe_thickness_of_convective_precipitation_amount_for_coupling           | total convective precipitation                                          | m           |    1 | real       | kind_phys | inout  | F        |
 !! | snow_cpl         | lwe_thickness_of_snow_amount_for_coupling                               | total snow precipitation                                                | m           |    1 | real       | kind_phys | inout  | F        |
@@ -172,9 +177,9 @@
 !> @{
       subroutine GFS_MP_generic_post_run(im, ix, levs, kdt, nrcm, ncld, nncl, ntcw, ntrac, imp_physics, imp_physics_gfdl, &
         imp_physics_thompson, cal_pre, lssav, ldiag3d, cplflx, cplchm, con_g, dtf, frain, rainc, rain1, rann, xlat, xlon, &
-        gt0, gq0, prsl, prsi, phii, tsfc, ice, snow, graupel, save_t, save_qv, rain0, ice0, snow0, graupel0, del,         &
+        gt0, gq0, prsl, prsi, phii, tsfc, ice, snow, graupel, save_t, save_qv, save_qc, rain0, ice0, snow0, graupel0, del,&
         rain, domr_diag, domzr_diag, domip_diag, doms_diag, tprcp, srflag, totprcp, totice, totsnw,                       &
-        totgrp, totprcpb, toticeb, totsnwb, totgrpb, dt3dt, dq3dt, rain_cpl, rainc_cpl, snow_cpl, pwat,                   &
+        totgrp, totprcpb, toticeb, totsnwb, totgrpb, dt3dt, dq3dt, dqc3dt,rain_cpl, rainc_cpl, snow_cpl, pwat,            &
         do_sppt, drain_cpl, dsnow_cpl, lsm, lsm_ruc, raincprv, rainncprv, iceprv, snowprv, graupelprv,      &
         dtp, errmsg, errflg)
 !
@@ -190,13 +195,13 @@
       real(kind=kind_phys), dimension(im),            intent(inout) :: ice, snow, graupel
       real(kind=kind_phys), dimension(im),            intent(in)    :: rain0, ice0, snow0, graupel0
       real(kind=kind_phys), dimension(ix,nrcm),       intent(in)    :: rann
-      real(kind=kind_phys), dimension(im,levs),       intent(in)    :: gt0, prsl, save_t, save_qv, del
+      real(kind=kind_phys), dimension(im,levs),       intent(in)    :: gt0, prsl, save_t, save_qc,save_qv, del
       real(kind=kind_phys), dimension(im,levs+1),     intent(in)    :: prsi, phii
       real(kind=kind_phys), dimension(im,levs,ntrac), intent(in)    :: gq0
 
       real(kind=kind_phys), dimension(im),      intent(inout) :: rain, domr_diag, domzr_diag, domip_diag, doms_diag, tprcp,     &
         srflag, totprcp, totice, totsnw, totgrp, totprcpb, toticeb, totsnwb, totgrpb, rain_cpl, rainc_cpl, snow_cpl, pwat
-      real(kind=kind_phys), dimension(im,levs), intent(inout) :: dt3dt, dq3dt
+      real(kind=kind_phys), dimension(im,levs), intent(inout) :: dt3dt, dq3dt,dqc3dt
 
       ! Stochastic physics / surface perturbations
       logical, intent(in) :: do_sppt
@@ -333,7 +338,8 @@
           do k=1,levs
             do i=1,im
               dt3dt(i,k) = dt3dt(i,k) + (gt0(i,k)-save_t(i,k)) * frain
-!              dq3dt(i,k) = dq3dt(i,k) + (gq0(i,k,1)-save_qv(i,k)) * frain
+              dq3dt(i,k) = dq3dt(i,k) + (gq0(i,k,1)-save_qv(i,k)) * frain
+              dqc3dt(i,k) = dqc3dt(i,k) + (SUM(gq0(i,k,ntcw:ntcw+nncl-1))-save_qc(i,k)) * frain
             enddo
           enddo
         endif

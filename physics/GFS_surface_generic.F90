@@ -461,8 +461,10 @@
         if (lssav) then
           tem = dtf * 0.001
           do i=1,im
-            runoff(i)  = runoff(i)  + (drain(i)+runof(i)) * tem
-            srunoff(i) = srunoff(i) + runof(i) * tem
+            !runoff(i)  = runoff(i)  + (drain(i)+runof(i)) * tem
+            !srunoff(i) = srunoff(i) + runof(i) * tem
+            runoff(i)  =  (drain(i)+runof(i)) * tem
+            srunoff(i) =  runof(i) * tem
           enddo
         endif
 

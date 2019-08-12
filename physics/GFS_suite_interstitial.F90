@@ -669,7 +669,6 @@
       !   endif
       ! endif
       !*GF
-
       if (cscnv .or. satmedmf .or. trans_trac ) then
         tracers = 2
         do n=2,ntrac

@@ -28,7 +28,6 @@ integer,                  intent(out)   :: errflg
       errmsg = ''
       errflg = 0
       call init_stochastic_physics(Model,errmsg,errflg)
-      print*,'finsihed with GFS_stochastics_init'
       end subroutine GFS_stochastics_init
 
       subroutine GFS_stochastics_finalize()
@@ -40,6 +39,7 @@ integer,                  intent(out)   :: errflg
 !! |----------------|---------------------------------------------------------------------------|--------------------------------------------------------------|---------|------|-----------|-----------|--------|----------|
 !! | im             | horizontal_loop_extent                                                    | horizontal loop extent                                       | count   |    0 | integer   |           | in     | F        |
 !! | km             | vertical_dimension                                                        | number of vertical levels                                    | count   |    0 | integer   |           | in     | F        |
+!! | ntrac          | number_of_tracers                                                         | number of tracers                                            | count   |    0 | integer   |           | in     | F        |
 !! | do_sppt        | flag_for_stochastic_surface_physics_perturbations                         | flag for stochastic surface physics perturbations            | flag    |    0 | logical   |           | in     | F        |
 !! | use_zmtnblck   | flag_for_mountain_blocking                                                | flag for mountain blocking                                   | flag    |    0 | logical   |           | in     | F        |
 !! | do_shum        | flag_for_stochastic_shum_option                                           | flag for stochastic shum option                              | flag    |    0 | logical   |           | in     | F        |
@@ -50,13 +50,13 @@ integer,                  intent(out)   :: errflg
 !! | ugrs           | x_wind                                                                    | zonal wind                                                   | m s-1   |    2 | real      | kind_phys | in     | F        |
 !! | vgrs           | y_wind                                                                    | meridional wind                                              | m s-1   |    2 | real      | kind_phys | in     | F        |
 !! | tgrs           | air_temperature                                                           | model layer mean temperature                                 | K       |    2 | real      | kind_phys | in     | F        |
-!! | qgrs           | water_vapor_specific_humidity                                             | water vapor specific humidity                                | kg kg-1 |    2 | real      | kind_phys | in     | F        |
+!! | qgrs           | tracer_concentration                                                      | model layer mean tracer concentration                        | kg kg-1 |    3 | real      | kind_phys | in     | F        |
 !! | gu0            | x_wind_updated_by_physics                                                 | zonal wind updated by physics                                | m s-1   |    2 | real      | kind_phys | inout  | F        |
 !! | gv0            | y_wind_updated_by_physics                                                 | meridional wind updated by physics                           | m s-1   |    2 | real      | kind_phys | inout  | F        |
 !! | gt0            | air_temperature_updated_by_physics                                        | temperature updated by physics                               | K       |    2 | real      | kind_phys | inout  | F        |
-!! | gq0            | water_vapor_specific_humidity_updated_by_physics                          | water vapor specific humidity updated by physics             | kg kg-1 |    2 | real      | kind_phys | inout  | F        |
+!! | gq0            | tracer_concentration_updated_by_physics                                   | tracers updated by physics                                   | kg kg-1 |    3 | real      | kind_phys | inout  | F        |
 !! | dtdtr          | tendency_of_air_temperature_due_to_radiative_heating_on_physics_time_step | temp. change due to radiative heating per time step          | K       |    2 | real      | kind_phys | in     | F        |
-!! | rain           | lwe_thickness_of_precipitation_amount_on_dynamics_timestep                | total rain at this time step                                 | m       |    1 | real      | kind_phys | in     | F        |
+!! | rain           | lwe_thickness_of_precipitation_amount_on_dynamics_timestep                | total rain at this time step                                 | m       |    1 | real      | kind_phys | inout  | F        |
 !! | rainc          | lwe_thickness_of_convective_precipitation_amount_on_dynamics_timestep     | convective rain at this time step                            | m       |    1 | real      | kind_phys | in     | F        |
 !! | tprcp          | nonnegative_lwe_thickness_of_precipitation_amount_on_dynamics_timestep    | total precipitation amount in each time step                 | m       |    1 | real      | kind_phys | inout  | F        |
 !! | totprcp        | accumulated_lwe_thickness_of_precipitation_amount                         | accumulated total precipitation                              | m       |    1 | real      | kind_phys | inout  | F        |
@@ -83,8 +83,8 @@ integer,                  intent(out)   :: errflg
 !      5) interpolates coefficients for prognostic ozone calculation
 !      6) performs surface data cycling via the GFS gcycle routine
 !-------------------------------------------------------------------------
-      subroutine GFS_stochastics_run (im, km, do_sppt, use_zmtnblck, do_shum,            &
-                                      zmtnblck, sppt_wts, shum_wts,diss_est,   &
+      subroutine GFS_stochastics_run (im, km, ntrac, do_sppt, use_zmtnblck, do_shum,     &
+                                      zmtnblck, sppt_wts, shum_wts, diss_est,            &
                                       ugrs, vgrs, tgrs, qgrs, gu0, gv0, gt0, gq0, dtdtr, &
                                       rain, rainc, tprcp, totprcp, cnvprcp,              &
                                       totprcpb, cnvprcpb, cplflx,                        &
@@ -98,6 +98,7 @@ integer,                  intent(out)   :: errflg
 
          integer,                               intent(in)    :: im
          integer,                               intent(in)    :: km
+         integer,                               intent(in)    :: ntrac
          logical,                               intent(in)    :: do_sppt
          logical,                               intent(in)    :: use_zmtnblck
          logical,                               intent(in)    :: do_shum
@@ -110,14 +111,14 @@ integer,                  intent(out)   :: errflg
          real(kind_phys), dimension(1:im,1:km), intent(in)    :: ugrs
          real(kind_phys), dimension(1:im,1:km), intent(in)    :: vgrs
          real(kind_phys), dimension(1:im,1:km), intent(in)    :: tgrs
-         real(kind_phys), dimension(1:im,1:km), intent(in)    :: qgrs
+         real(kind_phys), dimension(1:im,1:km,1:ntrac), intent(in)    :: qgrs
          real(kind_phys), dimension(1:im,1:km), intent(inout) :: gu0
          real(kind_phys), dimension(1:im,1:km), intent(inout) :: gv0
          real(kind_phys), dimension(1:im,1:km), intent(inout) :: gt0
-         real(kind_phys), dimension(1:im,1:km), intent(inout) :: gq0
+         real(kind_phys), dimension(1:im,1:km,1:ntrac), intent(inout) :: gq0
          ! dtdtr only allocated if do_sppt == .true.
          real(kind_phys), dimension(:,:),       intent(in)    :: dtdtr
-         real(kind_phys), dimension(1:im),      intent(in)    :: rain
+         real(kind_phys), dimension(1:im),      intent(inout)    :: rain
          real(kind_phys), dimension(1:im),      intent(in)    :: rainc
          real(kind_phys), dimension(1:im),      intent(inout) :: tprcp
          real(kind_phys), dimension(1:im),      intent(inout) :: totprcp
@@ -138,6 +139,7 @@ integer,                  intent(out)   :: errflg
          !--- local variables
          integer :: k, i
          real(kind=kind_phys) :: upert, vpert, tpert, qpert, qnew, sppt_vwt
+         real(kind=kind_phys) :: qlpert,qipert,qrpert,qspert,qgpert
 
          ! Initialize CCPP error handling variables
          errmsg = ''
@@ -167,43 +169,61 @@ integer,                  intent(out)   :: errflg
                   sppt_wts(i,k)=(sppt_wts(i,k)-1)*sppt_vwt+1.0
                endif
 
-               !upert = (gu0(i,k) - ugrs(i,k))   * sppt_wts(i,k)
-               !vpert = (gv0(i,k) - vgrs(i,k))   * sppt_wts(i,k)
-               !tpert = (gt0(i,k) - tgrs(i,k) - dtdtr(i,k)) * sppt_wts(i,k)
-               !qpert = (gq0(i,k) - qgrs(i,k)) * sppt_wts(i,k)
-               !gu0(i,k)  = ugrs(i,k)+upert
-               !gv0(i,k)  = vgrs(i,k)+vpert
+               upert = (gu0(i,k) - ugrs(i,k))   * sppt_wts(i,k)
+               vpert = (gv0(i,k) - vgrs(i,k))   * sppt_wts(i,k)
+               tpert = (gt0(i,k) - tgrs(i,k) - dtdtr(i,k)) * sppt_wts(i,k)
+               qpert = (gq0(i,k,Model%ntqv) - qgrs(i,k,Model%ntqv)) * sppt_wts(i,k)
+               qlpert = (gq0(i,k,Model%ntcw) - qgrs(i,k,Model%ntcw)) * sppt_wts(i,k)
+               qipert = (gq0(i,k,Model%ntiw) - qgrs(i,k,Model%ntiw)) * sppt_wts(i,k)
+               qrpert = (gq0(i,k,Model%ntrw) - qgrs(i,k,Model%ntrw)) * sppt_wts(i,k)
+               qspert = (gq0(i,k,Model%ntsw) - qgrs(i,k,Model%ntsw)) * sppt_wts(i,k)
+               qgpert = (gq0(i,k,Model%ntgl) - qgrs(i,k,Model%ntgl)) * sppt_wts(i,k)
+               gu0(i,k)  = ugrs(i,k)+upert
+               gv0(i,k)  = vgrs(i,k)+vpert
    
                !negative humidity check
-               !qnew = qgrs(i,k)+qpert
-               !if (qnew >= 1.0e-10) then
-               !   gq0(i,k) = qnew
-                  !gt0(i,k) = tgrs(i,k) + tpert + dtdtr(i,k)
+               qnew = qgrs(i,k,Model%ntqv)+qpert
+               if (qnew >= 1.0e-10) then
+                   gq0(i,k,Model%ntqv) = qnew
+                  gt0(i,k) = tgrs(i,k) + tpert + dtdtr(i,k)
                !   gt0(i,k) = gt0(i,k) + dtdtr(i,k) * (1.0-sppt_wts(i,k))
-               !endif
+               else
+                    print*,'not perturbing q'
+                    sppt_wts(i,k)=-1.0*(sppt_wts(i,k))
+               endif
+               qnew = qgrs(i,k,Model%ntcw)+qlpert
+               if (qnew >0.0) gq0(i,k,Model%ntcw) = qnew
+               qnew = qgrs(i,k,Model%ntiw)+qipert
+               if (qnew >0.0) gq0(i,k,Model%ntiw) = qnew
+               qnew = qgrs(i,k,Model%ntrw)+qrpert
+               if (qnew >0.0) gq0(i,k,Model%ntrw) = qnew
+               qnew = qgrs(i,k,Model%ntsw)+qspert
+               if (qnew >0.0) gq0(i,k,Model%ntsw) = qnew
+               qnew = qgrs(i,k,Model%ntgl)+qgpert
+               if (qnew >0.0) gq0(i,k,Model%ntgl) = qnew
              enddo
            enddo
            ! instantaneous precip rate going into land model at the next time step
-           !tprcp(:) = sppt_wts(:,30)*tprcp(:)
-           !totprcp(:) = totprcp(:) + (sppt_wts(:,30) - 1 )*rain(:)
+           tprcp(:) = sppt_wts(:,30)*tprcp(:)
+           totprcp(:) = totprcp(:) + (sppt_wts(:,30) - 1 )*rain(:)
            ! acccumulated total and convective preciptiation
-           !cnvprcp(:) = cnvprcp(:) + (sppt_wts(:,30) - 1 )*rainc(:)
+           cnvprcp(:) = cnvprcp(:) + (sppt_wts(:,30) - 1 )*rainc(:)
            ! bucket precipitation adjustment due to sppt
-           !totprcpb(:) = totprcpb(:) + (sppt_wts(:,30) - 1 )*rain(:)
-           !cnvprcpb(:) = cnvprcpb(:) + (sppt_wts(:,30) - 1 )*rainc(:)
+           totprcpb(:) = totprcpb(:) + (sppt_wts(:,30) - 1 )*rain(:)
+           cnvprcpb(:) = cnvprcpb(:) + (sppt_wts(:,30) - 1 )*rainc(:)
+           rain(:) = sppt_wts(:,30)*rain(:)
 
-           ! if (cplflx) then
-           !    rain_cpl(:) = rain_cpl(:) + (sppt_wts(:,30) - 1.0)*drain_cpl(:)
-           !    snow_cpl(:) = snow_cpl(:) + (sppt_wts(:,30) - 1.0)*dsnow_cpl(:)
-           ! endif
+           if (cplflx) then
+              rain_cpl(:) = rain_cpl(:) + (sppt_wts(:,30) - 1.0)*drain_cpl(:)
+              snow_cpl(:) = snow_cpl(:) + (sppt_wts(:,30) - 1.0)*dsnow_cpl(:)
+           endif
          
          endif
 
          if (do_shum) then
            do k=1,km
-             gq0(:,k) = gq0(:,k)*(1.0 + shum_wts(:,k))
+             gq0(:,k,Model%ntqv) = gq0(:,k,Model%ntqv)*(1.0 + shum_wts(:,k))
            end do
-           print*,'shum in stoch physics',shum_wts(1,1)
          endif
          
 
