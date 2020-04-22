@@ -4,6 +4,9 @@
    module GFS_time_vary_pre
 
       use funcphys, only: gfuncphys
+#ifdef SCM   
+    use scm_stochastic_physics
+#endif
 
       implicit none
 
@@ -186,6 +189,7 @@
           print *,' phour ', phour
           print *,' solhr ', solhr
         endif
+        call stochastic_physics_run(Model, Coupling, errmsg, errflg)
 
       end subroutine GFS_time_vary_pre_run
 

@@ -5,7 +5,14 @@
 
       contains
 
-      subroutine GFS_stochastics_init ()
+      subroutine GFS_stochastics_init (Model,errmsg,errflg)
+      use GFS_typedefs,       only: GFS_control_type
+      type(GFS_control_type),   intent(inout) :: Model
+      character(len=*),         intent(out)   :: errmsg
+      integer,                  intent(out)   :: errflg
+      errmsg = ''
+      errflg = 0
+      call init_stochastic_physics(Model,errmsg,errflg)
       end subroutine GFS_stochastics_init
 
       subroutine GFS_stochastics_finalize()
